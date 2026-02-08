@@ -23,4 +23,3 @@ Abra: http://localhost:3000
 ## Observações
 - O Socket.IO usa o token do localStorage no handshake.
 - Após login/logout o socket é desconectado para reconectar com token novo.
-# poker-client

@@ -1,23 +1,28 @@
 :root { color-scheme: dark light; }
 * { box-sizing: border-box; }
+
 body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   background: #0b0f14;
   color: #e6edf3;
 }
+
 a { color: inherit; text-decoration: none; }
-.container { max-width: 980px; margin: 0 auto; padding: 20px; }
+.container { max-width: 1240px; margin: 0 auto; padding: 20px; }
+
 .card {
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.04);
   border-radius: 12px;
   padding: 16px;
 }
+
 .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
 .grid { display:grid; gap:12px; }
 .grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
 .btn {
   border: 1px solid rgba(255,255,255,0.18);
   background: rgba(255,255,255,0.08);
@@ -27,10 +32,12 @@ a { color: inherit; text-decoration: none; }
   cursor: pointer;
 }
 .btn:hover { background: rgba(255,255,255,0.12); }
+
 .btnPrimary {
   border-color: rgba(99, 179, 237, 0.6);
   background: rgba(99, 179, 237, 0.18);
 }
+
 .input {
   padding: 10px 12px;
   border-radius: 10px;
@@ -39,23 +46,53 @@ a { color: inherit; text-decoration: none; }
   color: #e6edf3;
   min-width: 260px;
 }
+
 .small { opacity: 0.8; font-size: 12px; }
 .badge { padding: 3px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.16); font-size: 12px; }
 .hr { height: 1px; background: rgba(255,255,255,0.12); margin: 12px 0; }
 
-/* Poker table layout (UI-only, does not change game logic) */
+.range { width: 100%; }
+
+/* =========================
+   TABLE PAGE (layout)
+   ========================= */
+
+.tableLayout {
+  display: grid;
+  gap: 14px;
+}
+@media (min-width: 1100px) {
+  .tableLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tablePage {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 240px; /* espaço para overlay de ações */
+}
+
+.tableStageCard {
+  padding: 12px;
+}
+
+/* =========================
+   POKER TABLE (stage)
+   ========================= */
+
 .pokerStage {
   position: relative;
   width: 100%;
-  min-height: 420px;
+  min-height: 620px;
   display: grid;
   place-items: center;
 }
 
 .pokerTable {
   position: relative;
-  width: min(720px, 100%);
-  height: 420px;
+  width: min(1200px, 100%);
+  height: 620px;
   border-radius: 999px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.12);
@@ -117,11 +154,15 @@ a { color: inherit; text-decoration: none; }
   justify-content: center;
 }
 
+/* =========================
+   SEATS
+   ========================= */
+
 .pokerSeat {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 130px;
+  width: 160px;
   padding: 10px;
   border-radius: 14px;
   transform: translate(0px, 0px);
@@ -151,16 +192,309 @@ a { color: inherit; text-decoration: none; }
 
 .pokerSeatName {
   font-weight: 700;
-  max-width: 120px;
+  font-size: 14px;
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.pokerSeatStack { opacity: 0.85; }
+.pokerSeatStack {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.pokerSeatTurn {
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.10), 0 0 18px rgba(99, 179, 237, 0.22);
+  border-color: rgba(99, 179, 237, 0.85);
+}
+
+.pokerSeatFolded {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+/* =========================
+   ACTION OVERLAY (HUD)
+   ========================= */
+
+.actionOverlay {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  width: min(1100px, calc(100vw - 24px));
+  z-index: 60;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(10, 14, 20, 0.78);
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 16px 50px rgba(0,0,0,0.55);
+  backdrop-filter: blur(10px);
+}
+
+.actionHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.actionRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.actionRaise {
+  display: grid;
+  gap: 10px;
+}
+
+.actionRaiseTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.actionRaiseBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.actionBtnDanger {
+  border-color: rgba(244, 63, 94, 0.55);
+  background: rgba(244, 63, 94, 0.12);
+}
+.actionBtnDanger:hover {
+  background: rgba(244, 63, 94, 0.18);
+}
+
+/* toast */
+.turnToast {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 55;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.45);
+  border-radius: 12px;
+  padding: 10px 12px;
+  backdrop-filter: blur(8px);
+}
+
+/* =========================
+   MODAL
+   ========================= */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.62);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.modalContent {
+  width: min(420px, 100%);
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(12, 16, 24, 0.92);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.55);
+}
+
+/* =========================
+   REAL CARD ASSETS
+   ========================= */
+
+.cardImg { user-select: none; -webkit-user-drag: none; display: inline-block; }
+.cardImgSm { width: 34px; height: auto; border-radius: 6px; }
+.cardImgMd { width: 56px; height: auto; border-radius: 10px; }
+.cardImgLg { width: 84px; height: auto; border-radius: 12px; }
+
+/* =========================
+   BET STACK (chips)
+   ========================= */
+
+.pokerBetChip {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(0px, 0px);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.betStack {
+  position: relative;
+  width: 54px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+
+.betStackChips {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 34px;
+}
+
+.chip {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 38px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.5);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0.12)),
+    rgba(96,165,250,0.8);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+}
+
+.chip-1 { bottom: 0px; }
+.chip-2 { bottom: 6px; }
+.chip-3 { bottom: 12px; }
+.chip-4 { bottom: 18px; }
+
+.betStackValue {
+  position: relative;
+  z-index: 2;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+.betStackBadge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(185, 28, 28, 0.9);
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+}
+
+/* all-in */
+.betStackAllIn .chip {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95), rgba(255,255,255,0.10)),
+    rgba(245,158,11,0.9);
+  border-color: rgba(255, 215, 0, 0.7);
+  box-shadow:
+    0 10px 26px rgba(245,158,11,0.22),
+    0 8px 18px rgba(0,0,0,0.35);
+}
+
+.betStackAllIn .betStackValue {
+  border-color: rgba(245,158,11,0.7);
+  color: #fef3c7;
+}
+
+/* pop anim */
+@keyframes chipPopScale {
+  0% { transform: scale(0.86); opacity: 0.65; }
+  55% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pokerBetChipPop .betStack {
+  animation: chipPopScale 260ms ease-out;
+}
+
+/* =========================
+   HERO (PokerStars Plate)
+   ========================= */
+
+.heroSeat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.heroCards {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  z-index: 2;
+}
+
+.heroCard {
+  filter: drop-shadow(0 14px 20px rgba(0,0,0,0.55));
+  transform-origin: bottom center;
+}
+
+.heroCard0 { transform: translateY(-6px) rotate(-6deg); }
+.heroCard1 { transform: translateY(-6px) rotate(6deg); }
+
+/* plate mais PokerStars (gradiente + brilho) */
+.heroPlate {
+  width: 240px;
+  max-width: 92%;
+  padding: 10px 16px 12px;
+  border-radius: 999px;
+  background: linear-gradient(to bottom, rgba(20,20,20,0.55), rgba(0,0,0,0.55));
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 16px 32px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.heroPlateName {
+  font-weight: 900;
+  font-size: 18px;
+  line-height: 1.05;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+.heroPlateStack {
+  font-weight: 900;
+  font-size: 20px;
+  color: #d1fae5;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
 
 @media (max-width: 720px) {
-  .pokerTable { height: 380px; }
-  .pokerSeat { width: 110px; }
-  .pokerCenter { max-width: 92%; }
+  .actionOverlay { bottom: 10px; padding: 10px 12px; }
+  .pokerTable { height: 440px; }
+  .pokerStage { min-height: 440px; }
+  .pokerSeat { width: 125px; }
+  .turnToast { bottom: 92px; }
+  .heroPlate { width: 210px; }
+  .cardImgLg { width: 72px; }
 }

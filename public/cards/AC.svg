@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="336" viewBox="0 0 240 336">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#e5e7eb" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect x="14" y="14" width="212" height="308" rx="20" fill="url(#g)" stroke="#0f172a" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="22" y="22" width="196" height="292" rx="16" fill="transparent" stroke="#cbd5e1" stroke-width="1"/>
+  <g font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" fill="#111827">
+    <text x="38" y="64" font-size="44" font-weight="800">A</text>
+    <text x="40" y="100" font-size="36" font-weight="700">♣</text>
+
+    <g transform="translate(240,336) rotate(180)">
+      <text x="38" y="64" font-size="44" font-weight="800">A</text>
+      <text x="40" y="100" font-size="36" font-weight="700">♣</text>
+    </g>
+
+    <text x="120" y="190" text-anchor="middle" font-size="120" font-weight="800" opacity="0.85">♣</text>
+  </g>
+</svg>

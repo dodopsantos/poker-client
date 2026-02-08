@@ -1,0 +1,62 @@
+from pathlib import Path
+
+cards_dir = Path("public/cards")
+cards_dir.mkdir(parents=True, exist_ok=True)
+
+ranks = ["A","K","Q","J","T","9","8","7","6","5","4","3","2"]
+suits = {"S":"♠","H":"♥","D":"♦","C":"♣"}
+suit_color = {"S":"#111827","C":"#111827","H":"#b91c1c","D":"#b91c1c"}
+
+def svg_card(rank, suit_letter):
+    suit = suits[suit_letter]
+    color = suit_color[suit_letter]
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="240" height="336" viewBox="0 0 240 336">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#e5e7eb" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect x="14" y="14" width="212" height="308" rx="20" fill="url(#g)" stroke="#0f172a" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="22" y="22" width="196" height="292" rx="16" fill="transparent" stroke="#cbd5e1" stroke-width="1"/>
+  <g font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" fill="{color}">
+    <text x="38" y="64" font-size="44" font-weight="800">{rank}</text>
+    <text x="40" y="100" font-size="36" font-weight="700">{suit}</text>
+
+    <g transform="translate(240,336) rotate(180)">
+      <text x="38" y="64" font-size="44" font-weight="800">{rank}</text>
+      <text x="40" y="100" font-size="36" font-weight="700">{suit}</text>
+    </g>
+
+    <text x="120" y="190" text-anchor="middle" font-size="120" font-weight="800" opacity="0.85">{suit}</text>
+  </g>
+</svg>'''
+
+for r in ranks:
+    for s in suits.keys():
+        (cards_dir / f"{r}{s}.svg").write_text(svg_card(r, s), encoding="utf-8")
+
+back_svg = '''<svg xmlns="http://www.w3.org/2000/svg" width="240" height="336" viewBox="0 0 240 336">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <pattern id="p" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M0 12h24M12 0v24" stroke="#334155" stroke-width="2" opacity="0.35"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect x="14" y="14" width="212" height="308" rx="20" fill="url(#bg)" stroke="#0f172a" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="22" y="22" width="196" height="292" rx="16" fill="url(#bg)" stroke="#60a5fa" stroke-width="2" opacity="0.7"/>
+  <rect x="32" y="32" width="176" height="272" rx="12" fill="url(#p)" opacity="0.8"/>
+  <text x="120" y="178" text-anchor="middle" font-family="ui-sans-serif, system-ui" font-size="44" font-weight="900" fill="#93c5fd" opacity="0.9">POKER</text>
+</svg>'''
+(cards_dir / "BACK.svg").write_text(back_svg, encoding="utf-8")
+
+print("✅ Gerou 52 cartas + BACK em public/cards/")
