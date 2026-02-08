@@ -22,9 +22,15 @@ export type PublicGameState = {
   handId: string | null;
   round: BettingRound | null;
   board: string[];
+  /** Cards already drawn for the next street but not revealed yet (server-driven dealing animation). */
+  pendingBoard?: string[];
   pot: Pot;
   currentBet: number;
   minRaise: number;
+  /** When true, the server is currently revealing board cards (clients should disable actions). */
+  isDealingBoard?: boolean;
+  /** Server-authoritative turn deadline (unix ms). Optional for backwards compatibility. */
+  turnEndsAt?: number | null;
 };
 
 export type TableState = {

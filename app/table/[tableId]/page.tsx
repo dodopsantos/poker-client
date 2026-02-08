@@ -40,6 +40,11 @@ function TableInner() {
   const [info, setInfo] = useState<string | null>(null);
 
   const [myCards, setMyCards] = useState<string[]>([]);
+  const [showdownReveals, setShowdownReveals] = useState<Record<number, string[]>>({});
+  const [payoutAnim, setPayoutAnim] = useState<
+    | { id: string; pot: number; winners: Array<{ seatNo: number; userId: string; payout: number }> }
+    | null
+  >(null);
   const [raiseTo, setRaiseTo] = useState<number>(0);
 
   const me = useMemo(() => decodeJwt(getToken()) as { userId: string; username: string } | null, []);
@@ -60,11 +65,22 @@ function TableInner() {
     function onEvent(ev: TableEvent) {
       if (ev.type === "STATE_SNAPSHOT") setState((ev as any).state);
 
-      if (ev.type === "HAND_STARTED") setInfo(`Nova mão iniciada: ${ev.round}`);
+      if (ev.type === "HAND_STARTED") { setInfo(`Nova mão iniciada: ${ev.round}`); setShowdownReveals({}); }
 
       if (ev.type === "SHOWDOWN_REVEAL") {
         const winners = ev.winners.map((w) => `#${w.seatNo} +${w.payout}`).join(", ");
         setInfo(`Showdown! Pot ${ev.pot}. Winners: ${winners}`);
+        const m: Record<number, string[]> = {};
+        for (const r of ev.reveal ?? []) m[r.seatNo] = r.cards ?? [];
+        setShowdownReveals(m);
+
+        // Trigger pot -> winner chip animation
+        setPayoutAnim({
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          pot: ev.pot,
+          winners: ev.winners ?? [],
+        });
+        window.setTimeout(() => setPayoutAnim(null), 5000);
       }
 
       if (ev.type === "HAND_ENDED") {
@@ -72,6 +88,14 @@ function TableInner() {
         else if ((ev as any).winners?.length) {
           const winners = (ev as any).winners.map((w: any) => `#${w.seatNo} +${w.payout}`).join(", ");
           setInfo(`Mão finalizada. Winners: ${winners}`);
+
+          // In non-showdown endings (everyone folds), still animate pot -> winner(s)
+          setPayoutAnim({
+            id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            pot: (ev as any).pot ?? 0,
+            winners: (ev as any).winners ?? [],
+          });
+        window.setTimeout(() => setPayoutAnim(null), 5000);
         }
       }
 
@@ -115,6 +139,11 @@ function TableInner() {
 
   function act(action: Action, amount?: number) {
     setError(null);
+    // While the server is revealing board cards, ignore actions to prevent "DEALING_BOARD" errors.
+    if (Boolean((state?.game as any)?.isDealingBoard)) {
+      setError("Aguarde: o dealer está distribuindo as cartas do board.");
+      return;
+    }
     socket.emit("table:action", { tableId, action, amount }, (ack: any) => {
       if (!ack?.ok) setError(`${ack?.error?.code ?? "ACTION_FAILED"}: ${ack?.error?.message ?? "Falha ao executar ação."}`);
     });
@@ -150,6 +179,7 @@ function TableInner() {
   const inHand = Boolean(state?.game.handId);
   const myTurn = Boolean(ms?.isTurn);
   const turnSeat = state ? state.seats.find((s) => s.isTurn)?.seatNo ?? null : null;
+  const isDealingBoard = Boolean((state?.game as any)?.isDealingBoard);
 
   const toCall = state && ms ? Math.max(0, (state.game.currentBet ?? 0) - (ms.bet ?? 0)) : 0;
   const canCheck = toCall === 0;
@@ -218,6 +248,8 @@ function TableInner() {
               state={state}
               mySeatNo={ms?.seatNo ?? null}
               myCards={myCards}
+              showdownReveals={showdownReveals}
+              payoutAnim={payoutAnim}
               canSit={!ms}
               onEmptySeatClick={(sn) => {
                 if (ms) {
@@ -290,14 +322,18 @@ function TableInner() {
           </details>
 
           {/* WAITING HUD */}
-          {ms && inHand && !myTurn && (
+          {ms && inHand && (!myTurn || isDealingBoard) && (
             <div className="turnToast small">
-              Aguardando a vez do seat <code>{turnSeat ?? "-"}</code>…
+              {isDealingBoard ? (
+                <>Dealer distribuindo o board…</>
+              ) : (
+                <>Aguardando a vez do seat <code>{turnSeat ?? "-"}</code>…</>
+              )}
             </div>
           )}
 
           {/* ACTION OVERLAY (PokerStars-style) */}
-          {ms && inHand && myTurn && (
+          {ms && inHand && myTurn && !isDealingBoard && (
             <div className="actionOverlay" role="region" aria-label="Ações da sua vez">
               <div className="actionHeader">
                 <div className="small">

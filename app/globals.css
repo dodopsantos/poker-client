@@ -89,15 +89,31 @@ a { color: inherit; text-decoration: none; }
   place-items: center;
 }
 
-.pokerTable {
+.pokerTableWrap {
   position: relative;
   width: min(1200px, 100%);
   height: 620px;
   border-radius: 999px;
+}
+
+/* The oval felt/background stays clipped. */
+.pokerTable {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.04);
+  z-index: 1;
 }
+
+/* Seats, board and chips are above the table and MUST NOT be clipped by the oval. */
+.pokerOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
 
 .pokerFelt {
   position: absolute;
@@ -114,23 +130,34 @@ a { color: inherit; text-decoration: none; }
   top: 50%;
   transform: translate(-50%, -50%);
   display: grid;
-  gap: 10px;
+  gap: 12px;
   justify-items: center;
   text-align: center;
-  padding: 14px 16px;
+  padding: 18px 18px 16px;
   border-radius: 18px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.24);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.34);
+  box-shadow: 0 22px 60px rgba(0,0,0,0.45);
 }
 
-.pokerPot { display: grid; gap: 4px; }
+
+.pokerPot {
+  display: grid;
+  gap: 4px;
+}
+
+.pokerPot .small {
+  opacity: 0.78;
+  letter-spacing: 0.4px;
+}
 
 .pokerBoard {
+  margin-top: 6px;
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
   justify-content: center;
-  min-height: 52px;
+  min-height: 84px;
 }
 
 .pokerBoardEmpty { opacity: 0.7; }
@@ -160,53 +187,195 @@ a { color: inherit; text-decoration: none; }
 
 .pokerSeat {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 160px;
-  padding: 10px;
+  width: auto;
+  padding: 0;
   border-radius: 14px;
-  transform: translate(0px, 0px);
+  transform: translate(-50%, -50%) scale(var(--seatScale, 1));
   display: grid;
-  gap: 4px;
+  gap: 6px;
   place-items: center;
   text-align: center;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.22);
-  backdrop-filter: blur(6px);
+  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  z-index: 30;
 }
 
+/* Fine-tuning sizes per position (PokerStars-like perception) */
+.pokerSeatSizeHero { --seatScale: 1.05; }
+.pokerSeatSizeBottom { --seatScale: 1.00; }
+.pokerSeatSizeCorner { --seatScale: 0.95; }
+.pokerSeatSizeTop { --seatScale: 0.92; }
+
+
 .pokerSeatOccupied {
-  border-color: rgba(99, 179, 237, 0.45);
-  background: rgba(99, 179, 237, 0.08);
+  border-color: transparent;
+  background: transparent;
 }
 
 .pokerSeatEmpty {
-  border-style: dashed;
-  opacity: 0.85;
+  border-style: none;
+  opacity: 0.95;
 }
 
 .pokerSeatBadge {
   font-size: 12px;
-  opacity: 0.85;
+  opacity: 0.6;
+  transform: translateY(4px);
 }
 
-.pokerSeatName {
+/* PokerStars-like pill (name + stack) */
+.seatPill {
+  position: relative;
+  width: clamp(180px, 19vw, 260px);
+  height: 64px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.38);
+  border: 1px solid rgba(255,255,255,0.14);
+  backdrop-filter: none;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  display: grid;
+  align-items: center;
+  padding: 10px 52px 10px 44px;
+}
+
+.seatPillEmpty {
+  background: rgba(0,0,0,0.22);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+/* Empty seats should look lighter/smaller like PokerStars */
+.seatPillEmpty .seatPillName { font-size: 16px; opacity: 0.75; }
+.seatPillEmpty .seatPillStack { font-size: 30px; letter-spacing: 0.3px; }
+
+/* Empty seats should look calmer (avoid huge 'Vazio') */
+.seatPillEmpty .seatPillName { font-size: 16px; opacity: 0.85; }
+.seatPillEmpty .seatPillStack { font-size: 30px; }
+
+.seatPillInner {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  text-align: center;
+  line-height: 1.05;
+}
+
+.seatPillName {
   font-weight: 700;
-  font-size: 14px;
-  max-width: 140px;
+  font-size: 18px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.pokerSeatStack {
-  font-size: 12px;
-  opacity: 0.9;
+.seatPillStack {
+  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: 0.2px;
+  opacity: 0.95;
 }
 
-.pokerSeatTurn {
+.seatPillRightIcon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  opacity: 0.55;
+}
+
+.heroRightIcon {
+  right: 10px;
+}
+
+.seatDealerButton {
+  position: absolute;
+  left: -18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.18);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 14px;
+  color: rgba(255,255,255,0.9);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+}
+
+/* Cards above the pill */
+.villainCards {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -56px);
+  display: flex;
+  gap: 8px;
+  z-index: 4;
+}
+
+/* Highlight the player's pill when it's their turn.
+   NOTE: we intentionally do NOT add a glow box around the hero's whole area.
+   The hero uses the green countdown bar instead. */
+.pokerSeatTurn .seatPill {
   box-shadow: 0 0 0 2px rgba(255,255,255,0.10), 0 0 18px rgba(99, 179, 237, 0.22);
   border-color: rgba(99, 179, 237, 0.85);
+  animation: seatPulse 1.35s ease-in-out infinite;
+}
+
+@keyframes seatPulse {
+  0% {
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.10), 0 0 14px rgba(99, 179, 237, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.14), 0 0 24px rgba(99, 179, 237, 0.32);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.10), 0 0 14px rgba(99, 179, 237, 0.18);
+  }
+}
+
+/* Turn timer ring (UI-only). */
+.turnTimer {
+  position: absolute;
+  inset: -6px;
+  border-radius: 18px;
+  pointer-events: none;
+  opacity: 0.95;
+  background: conic-gradient(rgba(99,179,237,0.95) 0deg, rgba(99,179,237,0.95) 20deg, rgba(99,179,237,0.10) 20deg 360deg);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  padding: 2px;
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation-name: turnRing;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes turnRing {
+  from { background: conic-gradient(rgba(99,179,237,0.95) 0deg, rgba(99,179,237,0.95) 360deg); }
+  to { background: conic-gradient(rgba(99,179,237,0.10) 0deg, rgba(99,179,237,0.10) 360deg); }
+}
+
+.villainCards {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2px;
+  margin-bottom: 2px;
 }
 
 .pokerSeatFolded {
@@ -230,7 +399,7 @@ a { color: inherit; text-decoration: none; }
   border-radius: 16px;
   padding: 12px 14px;
   box-shadow: 0 16px 50px rgba(0,0,0,0.55);
-  backdrop-filter: blur(10px);
+  backdrop-filter: none;
 }
 
 .actionHeader {
@@ -337,41 +506,139 @@ a { color: inherit; text-decoration: none; }
   z-index: 3;
 }
 
+/* =========================
+   CHIP FLIGHT ANIMATIONS
+   ========================= */
+
+.pokerFlyChip {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 6;
+  animation: chipFly 850ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.pokerFlyChipInner {
+  transform: scale(0.85);
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,0.55));
+}
+
+.pokerFlyChip.toWinner .pokerFlyChipInner {
+  transform: scale(0.90);
+}
+
+@keyframes chipFly {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(0px, 0px) scale(0.85);
+  }
+  10% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(calc(var(--dx) * 0.85), calc(var(--dy) * 0.85)) scale(1.05);
+  }
+  100% {
+    opacity: 0.05;
+    transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.95);
+  }
+}
+
 .betStack {
   position: relative;
-  width: 54px;
-  height: 44px;
+  width: 58px;
+  height: 56px;
   display: grid;
   place-items: center;
 }
 
+
 .betStackChips {
   position: absolute;
   left: 50%;
-  bottom: 4px;
+  bottom: 6px;
   transform: translateX(-50%);
-  width: 40px;
-  height: 34px;
+  width: 44px;
+  height: 46px;
 }
+
 
 .chip {
   position: absolute;
   left: 50%;
-  transform: translateX(-50%);
-  width: 38px;
-  height: 14px;
+  bottom: 0;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
-  border: 2px solid rgba(255,255,255,0.5);
+  transform: translateX(-50%) rotate(var(--rot, 0deg));
+  /* base chip color */
+  --chip: rgba(96,165,250,0.95);
+
+  /* poker-chip look: rim + stripes + inner circle */
   background:
-    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0.12)),
-    rgba(96,165,250,0.8);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+    radial-gradient(circle at 35% 30%, rgba(255,255,255,0.85), rgba(255,255,255,0.10) 45%, rgba(0,0,0,0.20) 70%, rgba(0,0,0,0.35) 100%),
+    conic-gradient(
+      from 12deg,
+      rgba(255,255,255,0.92) 0 10deg,
+      var(--chip) 10deg 28deg,
+      rgba(255,255,255,0.92) 28deg 38deg,
+      var(--chip) 38deg 56deg,
+      rgba(255,255,255,0.92) 56deg 66deg,
+      var(--chip) 66deg 84deg,
+      rgba(255,255,255,0.92) 84deg 94deg,
+      var(--chip) 94deg 112deg,
+      rgba(255,255,255,0.92) 112deg 122deg,
+      var(--chip) 122deg 140deg,
+      rgba(255,255,255,0.92) 140deg 150deg,
+      var(--chip) 150deg 168deg,
+      rgba(255,255,255,0.92) 168deg 178deg,
+      var(--chip) 178deg 196deg,
+      rgba(255,255,255,0.92) 196deg 206deg,
+      var(--chip) 206deg 224deg,
+      rgba(255,255,255,0.92) 224deg 234deg,
+      var(--chip) 234deg 252deg,
+      rgba(255,255,255,0.92) 252deg 262deg,
+      var(--chip) 262deg 280deg,
+      rgba(255,255,255,0.92) 280deg 290deg,
+      var(--chip) 290deg 308deg,
+      rgba(255,255,255,0.92) 308deg 318deg,
+      var(--chip) 318deg 336deg,
+      rgba(255,255,255,0.92) 336deg 346deg,
+      var(--chip) 346deg 360deg
+    );
+  box-shadow:
+    0 10px 18px rgba(0,0,0,0.40),
+    inset 0 2px 4px rgba(255,255,255,0.22),
+    inset 0 -3px 6px rgba(0,0,0,0.35);
 }
 
-.chip-1 { bottom: 0px; }
-.chip-2 { bottom: 6px; }
-.chip-3 { bottom: 12px; }
-.chip-4 { bottom: 18px; }
+.chip::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255,255,255,0.55), rgba(255,255,255,0.08) 55%, rgba(0,0,0,0.28) 100%);
+  border: 2px solid rgba(255,255,255,0.26);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.22);
+}
+
+.chip::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.45);
+  opacity: 0.8;
+}
+
+
+.chip-1 { bottom: 0px; --rot: -6deg; }
+.chip-2 { bottom: 6px; --rot: 4deg; }
+.chip-3 { bottom: 12px; --rot: -2deg; }
+.chip-4 { bottom: 18px; --rot: 7deg; }
 
 .betStackValue {
   position: relative;
@@ -400,13 +667,12 @@ a { color: inherit; text-decoration: none; }
 
 /* all-in */
 .betStackAllIn .chip {
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95), rgba(255,255,255,0.10)),
-    rgba(245,158,11,0.9);
-  border-color: rgba(255, 215, 0, 0.7);
+  --chip: rgba(245,158,11,0.95);
   box-shadow:
-    0 10px 26px rgba(245,158,11,0.22),
-    0 8px 18px rgba(0,0,0,0.35);
+    0 14px 26px rgba(245,158,11,0.20),
+    0 10px 18px rgba(0,0,0,0.40),
+    inset 0 2px 4px rgba(255,255,255,0.22),
+    inset 0 -3px 6px rgba(0,0,0,0.35);
 }
 
 .betStackAllIn .betStackValue {
@@ -439,7 +705,7 @@ a { color: inherit; text-decoration: none; }
 
 .heroCards {
   display: flex;
-  gap: 12px;
+  gap: 6px;
   justify-content: center;
   align-items: center;
   z-index: 2;
@@ -450,8 +716,8 @@ a { color: inherit; text-decoration: none; }
   transform-origin: bottom center;
 }
 
-.heroCard0 { transform: translateY(-6px) rotate(-6deg); }
-.heroCard1 { transform: translateY(-6px) rotate(6deg); }
+.heroCard0 { transform: translateX(6px) translateY(-6px) rotate(-10deg); }
+.heroCard1 { transform: translateX(-6px) translateY(-6px) rotate(10deg); }
 
 /* plate mais PokerStars (gradiente + brilho) */
 .heroPlate {
@@ -461,7 +727,7 @@ a { color: inherit; text-decoration: none; }
   border-radius: 999px;
   background: linear-gradient(to bottom, rgba(20,20,20,0.55), rgba(0,0,0,0.55));
   border: 1px solid rgba(255,255,255,0.18);
-  backdrop-filter: blur(10px);
+  backdrop-filter: none;
   box-shadow:
     0 16px 32px rgba(0,0,0,0.45),
     inset 0 1px 0 rgba(255,255,255,0.08);
@@ -469,6 +735,50 @@ a { color: inherit; text-decoration: none; }
   flex-direction: column;
   align-items: center;
   gap: 2px;
+}
+
+.heroStackBar {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.12);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.heroStackBarFill {
+  height: 100%;
+  width: 0%;
+  background: rgba(34,197,94,0.85);
+  box-shadow: 0 0 12px rgba(34,197,94,0.25);
+  transition: width 120ms linear;
+}
+
+/* When it's the hero's turn, the bar becomes a real-time countdown driven by JS (server timer). */
+.heroPlate[data-turn="true"] .heroStackBar {
+  background: var(--turnBg, rgba(34,197,94,0.16));
+  border-color: rgba(255,255,255,0.18);
+}
+
+.heroPlate[data-turn="true"] .heroStackBarFill {
+  background: var(--turnColor, rgba(34,197,94,0.90));
+  box-shadow: 0 0 14px rgba(255,255,255,0.10);
+}
+
+/* Subtle PokerStars-like urgency glow (only when time is low). */
+.heroPlate[data-urgency="red"] {
+  animation: heroUrgencyPulse 900ms ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(239,68,68,0.25));
+}
+
+@keyframes heroUrgencyPulse {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(239,68,68,0.18)); }
+  50% { filter: drop-shadow(0 0 18px rgba(239,68,68,0.35)); }
+}
+
+.heroStackBarTurn .heroStackBarFill {
+  box-shadow: 0 0 18px rgba(99,179,237,0.35);
 }
 
 .heroPlateName {
@@ -493,8 +803,81 @@ a { color: inherit; text-decoration: none; }
   .actionOverlay { bottom: 10px; padding: 10px 12px; }
   .pokerTable { height: 440px; }
   .pokerStage { min-height: 440px; }
-  .pokerSeat { width: 125px; }
+  .seatPill { width: 200px; height: 60px; padding: 10px 48px 10px 42px; }
+  .seatPillName { font-size: 16px; }
+  .seatPillStack { font-size: 24px; }
   .turnToast { bottom: 92px; }
   .heroPlate { width: 210px; }
   .cardImgLg { width: 72px; }
+}
+
+
+/* =========================
+   BOXLESS BOARD + HANDS (requested)
+   ========================= */
+
+/* Remove the big center box behind pot/board */
+.pokerCenter {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* Ensure no accidental panel behind board */
+.pokerBoard,
+.pokerPot {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove any container box behind cards (hero + villains) */
+.heroSeat,
+.heroCards,
+.villainCards {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* If any seat wrapper ends up painting a rectangle on some GPUs, force it off */
+.pokerSeat {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Optional: tighten hero hand a bit more (PokerStars feel) */
+.heroCards { gap: 2px !important; }
+.heroCard0 { transform: rotate(-10deg) translateX(10px) translateY(6px) !important; }
+.heroCard1 { transform: rotate(10deg) translateX(-10px) translateY(6px) !important; }
+
+
+/* =========================
+   SIDE POTS (visual)
+   ========================= */
+
+.pokerPotsRow{
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  align-items:flex-end;
+  margin-top:8px;
+  pointer-events:none;
+}
+.pokerPotItem{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  transform: translateY(2px);
+}
+.pokerPotLabel{
+  font-size:12px;
+  opacity:.85;
+  text-transform:uppercase;
+  letter-spacing:.06em;
 }
