@@ -6,8 +6,9 @@ import { RequireAuth } from "../../../src/components/RequireAuth";
 import { getSocket } from "../../../src/lib/socket";
 import type { TableEvent, TableState } from "../../../src/contracts/table";
 import { apiFetch } from "../../../src/lib/api";
-import { getToken } from "../../../src/lib/auth";
+import { getToken, logout } from "../../../src/lib/auth";
 import { PokerTableView } from "../../../src/components/PokerTableView";
+import { ToastManager } from "../../../src/components/Toast";
 
 function decodeJwt(token: string | null): any {
   if (!token) return null;
@@ -36,8 +37,17 @@ function TableInner() {
   const socket = useMemo(() => getSocket(), []);
   const [state, setState] = useState<TableState | null>(null);
 
-  const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
+  // Toast system (replaces error/info)
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: "error" | "info" | "success" }>>([]);
+
+  const addToast = (message: string, type: "error" | "info" | "success" = "info") => {
+    const id = `${Date.now()}-${Math.random()}`;
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   const [myCards, setMyCards] = useState<string[]>([]);
   const [showdownReveals, setShowdownReveals] = useState<Record<number, string[]>>({});
@@ -53,11 +63,15 @@ function TableInner() {
   const [buyIn, setBuyIn] = useState(1000);
   const [seatNo, setSeatNo] = useState<number | null>(null);
   const [sitOpen, setSitOpen] = useState(false);
+  
+  // rebuy modal
+  const [rebuyOpen, setRebuyOpen] = useState(false);
+  const [rebuyAmount, setRebuyAmount] = useState(0);
+  
+  // sit-out state
+  const [isSittingOut, setIsSittingOut] = useState(false);
 
   useEffect(() => {
-    setError(null);
-    setInfo(null);
-
     function onState(s: TableState) {
       setState(s);
     }
@@ -65,16 +79,18 @@ function TableInner() {
     function onEvent(ev: TableEvent) {
       if (ev.type === "STATE_SNAPSHOT") setState((ev as any).state);
 
-      if (ev.type === "HAND_STARTED") { setInfo(`Nova mão iniciada: ${ev.round}`); setShowdownReveals({}); }
+      if (ev.type === "HAND_STARTED") {
+        addToast(`Nova mão iniciada: ${ev.round}`, "info");
+        setShowdownReveals({});
+      }
 
       if (ev.type === "SHOWDOWN_REVEAL") {
         const winners = ev.winners.map((w) => `#${w.seatNo} +${w.payout}`).join(", ");
-        setInfo(`Showdown! Pot ${ev.pot}. Winners: ${winners}`);
+        addToast(`Showdown! Pot ${ev.pot}. Winners: ${winners}`, "info");
         const m: Record<number, string[]> = {};
         for (const r of ev.reveal ?? []) m[r.seatNo] = r.cards ?? [];
         setShowdownReveals(m);
 
-        // Trigger pot -> winner chip animation
         setPayoutAnim({
           id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
           pot: ev.pot,
@@ -84,22 +100,40 @@ function TableInner() {
       }
 
       if (ev.type === "HAND_ENDED") {
-        if ((ev as any).winnerSeat != null) setInfo(`Mão finalizada. Vencedor: seat #${(ev as any).winnerSeat}`);
-        else if ((ev as any).winners?.length) {
+        if ((ev as any).winnerSeat != null) {
+          addToast(`Mão finalizada. Vencedor: seat #${(ev as any).winnerSeat}`, "info");
+        } else if ((ev as any).winners?.length) {
           const winners = (ev as any).winners.map((w: any) => `#${w.seatNo} +${w.payout}`).join(", ");
-          setInfo(`Mão finalizada. Winners: ${winners}`);
+          addToast(`Mão finalizada. Winners: ${winners}`, "info");
 
-          // In non-showdown endings (everyone folds), still animate pot -> winner(s)
           setPayoutAnim({
             id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
             pot: (ev as any).pot ?? 0,
             winners: (ev as any).winners ?? [],
           });
-        window.setTimeout(() => setPayoutAnim(null), 5000);
+          window.setTimeout(() => setPayoutAnim(null), 5000);
         }
       }
 
-      if (ev.type === "ERROR") setError(`${(ev as any).code}: ${(ev as any).message}`);
+      if (ev.type === "ERROR") {
+        const code = (ev as any).code;
+        const message = (ev as any).message;
+        
+        if (code === "RATE_LIMIT") {
+          addToast("Muitas requisições. Aguarde um momento.", "error");
+        } else {
+          addToast(`${code}: ${message}`, "error");
+        }
+      }
+
+      if (ev.type === "SIT_OUT_ACK") {
+        setIsSittingOut((ev as any).isSittingOut);
+        addToast((ev as any).isSittingOut ? "Você está em sit-out" : "Você voltou ao jogo", "info");
+      }
+
+      if (ev.type === "LEAVE_PENDING") {
+        addToast((ev as any).message ?? "Você será removido ao fim da mão", "info");
+      }
     }
 
     socket.emit("table:join", { tableId });
@@ -138,40 +172,92 @@ function TableInner() {
   }, [state?.game.handId, state?.game.currentBet, state?.game.minRaise]);
 
   function act(action: Action, amount?: number) {
-    setError(null);
-    // While the server is revealing board cards, ignore actions to prevent "DEALING_BOARD" errors.
     if (Boolean((state?.game as any)?.isDealingBoard)) {
-      setError("Aguarde: o dealer está distribuindo as cartas do board.");
+      addToast("Aguarde: o dealer está distribuindo as cartas do board.", "error");
       return;
     }
     socket.emit("table:action", { tableId, action, amount }, (ack: any) => {
-      if (!ack?.ok) setError(`${ack?.error?.code ?? "ACTION_FAILED"}: ${ack?.error?.message ?? "Falha ao executar ação."}`);
+      if (!ack?.ok) {
+        addToast(`${ack?.error?.code ?? "ACTION_FAILED"}: ${ack?.error?.message ?? "Falha ao executar ação."}`, "error");
+      }
     });
   }
 
   async function wallet() {
-    setError(null);
     try {
       const data = await apiFetch<{ balance: number }>("/wallet", { method: "GET" });
-      alert(`Saldo (wallet): ${data.balance}`);
+      addToast(`Saldo: ${data.balance}`, "info");
     } catch (e: any) {
-      setError(e.message ?? "Falha ao buscar wallet.");
+      addToast(e.message ?? "Falha ao buscar wallet.", "error");
     }
   }
 
   async function leave() {
-    setError(null);
     socket.emit("table:leave", { tableId });
   }
 
   async function sit() {
-    setError(null);
     if (seatNo == null) {
-      setError("Selecione um assento vazio para sentar.");
+      addToast("Selecione um assento vazio para sentar.", "error");
       return;
     }
+
+    // Validate buy-in range (20x-100x BB)
+    if (state) {
+      const minBuyIn = state.table.bigBlind * 20;
+      const maxBuyIn = state.table.bigBlind * 100;
+
+      if (buyIn < minBuyIn) {
+        addToast(`Buy-in mínimo: ${minBuyIn}`, "error");
+        return;
+      }
+
+      if (buyIn > maxBuyIn) {
+        addToast(`Buy-in máximo: ${maxBuyIn}`, "error");
+        return;
+      }
+    }
+
     socket.emit("table:sit", { tableId, seatNo: Number(seatNo), buyInAmount: Number(buyIn) });
     setSitOpen(false);
+  }
+
+  async function rebuy() {
+    if (!state) return;
+    
+    const minRebuy = state.table.bigBlind;
+    const maxStack = state.table.bigBlind * 100;
+    const currentStack = ms?.stack ?? 0;
+    
+    if (rebuyAmount < minRebuy) {
+      addToast(`Rebuy mínimo: ${minRebuy}`, "error");
+      return;
+    }
+    
+    if (currentStack + rebuyAmount > maxStack) {
+      addToast(`Stack não pode exceder ${maxStack} (atual: ${currentStack})`, "error");
+      return;
+    }
+    
+    socket.emit("table:rebuy", { tableId, amount: rebuyAmount }, (ack: any) => {
+      if (ack?.ok) {
+        addToast(`Rebuy de ${rebuyAmount} realizado!`, "success");
+        setRebuyOpen(false);
+        setRebuyAmount(0);
+      } else {
+        addToast(ack?.error?.message ?? "Erro no rebuy", "error");
+      }
+    });
+  }
+
+  function toggleSitOut() {
+    const event = isSittingOut ? "table:sit_in" : "table:sit_out";
+    socket.emit(event, { tableId });
+  }
+
+  async function handleLogout() {
+    await logout();
+    router.push("/login");
   }
 
   // derived values for action overlay
@@ -213,13 +299,24 @@ function TableInner() {
             <button className="btn" onClick={wallet}>
               Ver wallet
             </button>
+            {ms && !inHand && (
+              <button className="btn" onClick={() => setRebuyOpen(true)}>
+                Rebuy
+              </button>
+            )}
+            {ms && inHand && (
+              <button className="btn" onClick={toggleSitOut}>
+                {isSittingOut ? "Sit In" : "Sit Out"}
+              </button>
+            )}
+            <button className="btn" onClick={handleLogout}>
+              Sair
+            </button>
             <button className="btn" onClick={() => router.push("/lobby")}>
-              Voltar
+              Lobby
             </button>
           </div>
         </div>
-        {info && <p style={{ color: "#b7ffb7" }}>{info}</p>}
-        {error && <p style={{ color: "salmon" }}>{error}</p>}
       </div>
 
       {!state ? (
@@ -237,7 +334,7 @@ function TableInner() {
               </div>
               <div className="row">
                 <button className="btn" onClick={leave}>
-                  Sair (cashout)
+                  Deixar mesa (cashout)
                 </button>
               </div>
             </div>
@@ -253,7 +350,7 @@ function TableInner() {
               canSit={!ms}
               onEmptySeatClick={(sn) => {
                 if (ms) {
-                  setInfo(`Você já está sentado no seat #${ms.seatNo}.`);
+                  addToast(`Você já está sentado no seat #${ms.seatNo}.`, "info");
                   return;
                 }
                 setSeatNo(sn);
@@ -274,6 +371,11 @@ function TableInner() {
                 <div className="small" style={{ opacity: 0.9 }}>
                   Assento selecionado: <code>#{seatNo ?? "-"}</code>
                 </div>
+                {state && (
+                  <div className="small" style={{ opacity: 0.8, marginTop: 4 }}>
+                    Min: {state.table.bigBlind * 20} • Max: {state.table.bigBlind * 100}
+                  </div>
+                )}
                 <div className="hr" />
                 <label className="small">Buy-in</label>
                 <input className="input" type="number" min={1} value={buyIn} onChange={(e) => setBuyIn(Number(e.target.value))} />
@@ -282,6 +384,44 @@ function TableInner() {
                     Cancelar
                   </button>
                   <button className="btn btnPrimary" onClick={sit}>
+                    Confirmar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {rebuyOpen && (
+            <div className="modalOverlay" role="dialog" aria-modal="true" onClick={() => setRebuyOpen(false)}>
+              <div className="modalContent" onClick={(e) => e.stopPropagation()}>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <strong>Rebuy</strong>
+                  <button className="btn" onClick={() => setRebuyOpen(false)}>
+                    X
+                  </button>
+                </div>
+                <div className="small" style={{ opacity: 0.9 }}>
+                  Stack atual: <code>{ms?.stack ?? 0}</code>
+                </div>
+                {state && (
+                  <div className="small" style={{ opacity: 0.8, marginTop: 4 }}>
+                    Máximo total: {state.table.bigBlind * 100}
+                  </div>
+                )}
+                <div className="hr" />
+                <label className="small">Valor do rebuy</label>
+                <input
+                  className="input"
+                  type="number"
+                  min={state?.table.bigBlind ?? 1}
+                  value={rebuyAmount}
+                  onChange={(e) => setRebuyAmount(Number(e.target.value))}
+                />
+                <div className="row" style={{ justifyContent: "flex-end" }}>
+                  <button className="btn" onClick={() => setRebuyOpen(false)}>
+                    Cancelar
+                  </button>
+                  <button className="btn btnPrimary" onClick={rebuy}>
                     Confirmar
                   </button>
                 </div>
@@ -305,6 +445,7 @@ function TableInner() {
                         <span className="badge">#{s.seatNo}</span>
                         <span>{s.user ? s.user.username : "vazio"}</span>
                         <span className="small">({s.state})</span>
+                        {(s as any).isSittingOut && <span className="small" style={{ color: "orange" }}>[SIT-OUT]</span>}
                       </div>
                       <div className="row">
                         <span className="small">stack: {s.stack}</span>
@@ -327,7 +468,10 @@ function TableInner() {
               {isDealingBoard ? (
                 <>Dealer distribuindo o board…</>
               ) : (
-                <>Aguardando a vez do seat <code>{turnSeat ?? "-"}</code>…</>
+                <>
+                  Aguardando a vez do seat <code>{turnSeat ?? "-"}</code>…
+                  {isSittingOut && <span style={{ color: "orange", marginLeft: 8 }}>(você está em sit-out)</span>}
+                </>
               )}
             </div>
           )}
@@ -424,6 +568,8 @@ function TableInner() {
           )}
         </>
       )}
+
+      <ToastManager toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

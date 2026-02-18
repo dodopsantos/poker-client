@@ -11,6 +11,7 @@ export type SeatPublic = {
   bet?: number;
   hasFolded?: boolean;
   isAllIn?: boolean;
+  isSittingOut?: boolean;
   committed?: number;
 };
 
@@ -52,6 +53,8 @@ export type TableEvent =
   | { type: "HAND_STARTED"; tableId: string; handId: string; round: BettingRound }
   | { type: "HAND_ENDED"; tableId: string; winnerSeat?: number; winners?: Array<{ seatNo: number; userId: string; payout: number }>; pot?: number }
   | { type: "SHOWDOWN_REVEAL"; tableId: string; pot: number; reveal: Array<{ seatNo: number; userId: string; cards: string[] }>; winners: Array<{ seatNo: number; userId: string; payout: number }> }
-  | { type: "ERROR"; code: string; message: string };
+  | { type: "ERROR"; code: string; message: string }
+  | { type: "SIT_OUT_ACK"; tableId: string; isSittingOut: boolean }
+  | { type: "LEAVE_PENDING"; tableId: string; message: string };
 
 export type PrivateCardsEvent = { tableId: string; handId: string; cards: string[] };
