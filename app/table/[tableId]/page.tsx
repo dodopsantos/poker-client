@@ -1,4 +1,5 @@
 "use client";
+import { Chat } from "../../../src/components/Chat";
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -37,7 +38,6 @@ function TableInner() {
   const socket = useMemo(() => getSocket(), []);
   const [state, setState] = useState<TableState | null>(null);
 
-  // Toast system (replaces error/info)
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: "error" | "info" | "success" }>>([]);
 
   const addToast = (message: string, type: "error" | "info" | "success" = "info") => {
@@ -59,16 +59,13 @@ function TableInner() {
 
   const me = useMemo(() => decodeJwt(getToken()) as { userId: string; username: string } | null, []);
 
-  // sit modal
   const [buyIn, setBuyIn] = useState(1000);
   const [seatNo, setSeatNo] = useState<number | null>(null);
   const [sitOpen, setSitOpen] = useState(false);
   
-  // rebuy modal
   const [rebuyOpen, setRebuyOpen] = useState(false);
   const [rebuyAmount, setRebuyAmount] = useState(0);
   
-  // sit-out state
   const [isSittingOut, setIsSittingOut] = useState(false);
 
   useEffect(() => {
@@ -155,7 +152,6 @@ function TableInner() {
     return state.seats.find((s) => s.user?.id === me.userId) ?? null;
   }
 
-  // keep raiseTo inside valid range when hand changes
   useEffect(() => {
     if (!state) return;
     const ms = mySeat();
@@ -202,7 +198,6 @@ function TableInner() {
       return;
     }
 
-    // Validate buy-in range (20x-100x BB)
     if (state) {
       const minBuyIn = state.table.bigBlind * 20;
       const maxBuyIn = state.table.bigBlind * 100;
@@ -260,7 +255,6 @@ function TableInner() {
     router.push("/login");
   }
 
-  // derived values for action overlay
   const ms = state ? mySeat() : null;
   const inHand = Boolean(state?.game.handId);
   const myTurn = Boolean(ms?.isTurn);
@@ -283,291 +277,275 @@ function TableInner() {
       : 0;
 
   const allInIsCall = toCall >= stack;
-  const allInLabel = allInIsCall ? `All-in (Call ${stack})` : `All-in (Raise to ${maxRaiseTo})`;
+  const allInLabel = allInIsCall ? `All-in (${stack})` : `All-in (${maxRaiseTo})`;
 
   return (
-    <div className="tablePage">
-      <div className="card">
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <div className="grid" style={{ gap: 4 }}>
-            <h2 style={{ margin: 0 }}>Mesa</h2>
-            <div className="small">
-              ID: <code>{tableId}</code>
+    <div className="table-page">
+      {/* Header */}
+      <div className="container">
+        <div className="card">
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <div>
+              <h2 style={{ margin: 0, marginBottom: "var(--space-2)" }}>{state?.table.name ?? "Carregando..."}</h2>
+              {state && (
+                <div className="text-sm text-secondary">
+                  Blinds: <span className="mono">{state.table.smallBlind}/{state.table.bigBlind}</span> •{" "}
+                  Max: {state.table.maxPlayers} •{" "}
+                  <span className={`badge ${state.table.status === "RUNNING" ? "badge-success" : "badge-info"}`}>
+                    {state.table.status}
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
-          <div className="row">
-            <button className="btn" onClick={wallet}>
-              Ver wallet
-            </button>
-            {ms && !inHand && (
-              <button className="btn" onClick={() => setRebuyOpen(true)}>
-                Rebuy
+            
+            <div className="row gap-2">
+              <button className="btn btn-sm" onClick={wallet}>
+                💰 Wallet
               </button>
-            )}
-            {ms && inHand && (
-              <button className="btn" onClick={toggleSitOut}>
-                {isSittingOut ? "Sit In" : "Sit Out"}
+              {ms && !inHand && (
+                <button className="btn btn-sm btn-success" onClick={() => setRebuyOpen(true)}>
+                  + Rebuy
+                </button>
+              )}
+              {ms && inHand && (
+                <button className="btn btn-sm" onClick={toggleSitOut}>
+                  {isSittingOut ? "▶️ Sit In" : "⏸️ Sit Out"}
+                </button>
+              )}
+              {ms && (
+                <button className="btn btn-sm btn-danger" onClick={leave}>
+                  Sair da mesa
+                </button>
+              )}
+              <button className="btn btn-sm" onClick={handleLogout}>
+                🚪 Logout
               </button>
-            )}
-            <button className="btn" onClick={handleLogout}>
-              Sair
-            </button>
-            <button className="btn" onClick={() => router.push("/lobby")}>
-              Lobby
-            </button>
+              <button className="btn btn-sm" onClick={() => router.push("/lobby")}>
+                ← Lobby
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Poker Table */}
       {!state ? (
-        <div className="card">Carregando estado da mesa...</div>
-      ) : (
-        <>
+        <div className="container">
           <div className="card">
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <div>
-                <strong>{state.table.name}</strong>
-                <div className="small">
-                  Blinds: {state.table.smallBlind}/{state.table.bigBlind} • Max: {state.table.maxPlayers} •{" "}
-                  <span className="badge">{state.table.status}</span>
-                </div>
-              </div>
-              <div className="row">
-                <button className="btn" onClick={leave}>
-                  Deixar mesa (cashout)
-                </button>
-              </div>
-            </div>
+            <div className="loading" style={{ margin: "var(--space-10) auto" }} />
+            <p style={{ textAlign: "center", color: "var(--text-muted)", marginTop: "var(--space-4)" }}>
+              Carregando mesa...
+            </p>
           </div>
-
-          <div className="tableStageCard card">
-            <PokerTableView
-              state={state}
-              mySeatNo={ms?.seatNo ?? null}
-              myCards={myCards}
-              showdownReveals={showdownReveals}
-              payoutAnim={payoutAnim}
-              canSit={!ms}
-              onEmptySeatClick={(sn) => {
-                if (ms) {
-                  addToast(`Você já está sentado no seat #${ms.seatNo}.`, "info");
-                  return;
-                }
-                setSeatNo(sn);
-                setSitOpen(true);
-              }}
-            />
-          </div>
-
-          {sitOpen && (
-            <div className="modalOverlay" role="dialog" aria-modal="true" onClick={() => setSitOpen(false)}>
-              <div className="modalContent" onClick={(e) => e.stopPropagation()}>
-                <div className="row" style={{ justifyContent: "space-between" }}>
-                  <strong>Sentar na mesa</strong>
-                  <button className="btn" onClick={() => setSitOpen(false)}>
-                    X
-                  </button>
-                </div>
-                <div className="small" style={{ opacity: 0.9 }}>
-                  Assento selecionado: <code>#{seatNo ?? "-"}</code>
-                </div>
-                {state && (
-                  <div className="small" style={{ opacity: 0.8, marginTop: 4 }}>
-                    Min: {state.table.bigBlind * 20} • Max: {state.table.bigBlind * 100}
-                  </div>
-                )}
-                <div className="hr" />
-                <label className="small">Buy-in</label>
-                <input className="input" type="number" min={1} value={buyIn} onChange={(e) => setBuyIn(Number(e.target.value))} />
-                <div className="row" style={{ justifyContent: "flex-end" }}>
-                  <button className="btn" onClick={() => setSitOpen(false)}>
-                    Cancelar
-                  </button>
-                  <button className="btn btnPrimary" onClick={sit}>
-                    Confirmar
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {rebuyOpen && (
-            <div className="modalOverlay" role="dialog" aria-modal="true" onClick={() => setRebuyOpen(false)}>
-              <div className="modalContent" onClick={(e) => e.stopPropagation()}>
-                <div className="row" style={{ justifyContent: "space-between" }}>
-                  <strong>Rebuy</strong>
-                  <button className="btn" onClick={() => setRebuyOpen(false)}>
-                    X
-                  </button>
-                </div>
-                <div className="small" style={{ opacity: 0.9 }}>
-                  Stack atual: <code>{ms?.stack ?? 0}</code>
-                </div>
-                {state && (
-                  <div className="small" style={{ opacity: 0.8, marginTop: 4 }}>
-                    Máximo total: {state.table.bigBlind * 100}
-                  </div>
-                )}
-                <div className="hr" />
-                <label className="small">Valor do rebuy</label>
-                <input
-                  className="input"
-                  type="number"
-                  min={state?.table.bigBlind ?? 1}
-                  value={rebuyAmount}
-                  onChange={(e) => setRebuyAmount(Number(e.target.value))}
-                />
-                <div className="row" style={{ justifyContent: "flex-end" }}>
-                  <button className="btn" onClick={() => setRebuyOpen(false)}>
-                    Cancelar
-                  </button>
-                  <button className="btn btnPrimary" onClick={rebuy}>
-                    Confirmar
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Debug/Details (optional) */}
-          <details className="card" style={{ opacity: 0.95 }}>
-            <summary style={{ cursor: "pointer" }}>
-              <strong>Detalhes</strong> <span className="small">(assentos + game)</span>
-            </summary>
-            <div className="hr" />
-            <div className="grid" style={{ gap: 10 }}>
-              <div>
-                <strong>Assentos</strong>
-                <div className="grid" style={{ gap: 8, marginTop: 10 }}>
-                  {state.seats.map((s) => (
-                    <div key={s.seatNo} className="row" style={{ justifyContent: "space-between" }}>
-                      <div className="row">
-                        <span className="badge">#{s.seatNo}</span>
-                        <span>{s.user ? s.user.username : "vazio"}</span>
-                        <span className="small">({s.state})</span>
-                        {(s as any).isSittingOut && <span className="small" style={{ color: "orange" }}>[SIT-OUT]</span>}
-                      </div>
-                      <div className="row">
-                        <span className="small">stack: {s.stack}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <strong>Game</strong>
-                <div className="hr" />
-                <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{JSON.stringify(state.game, null, 2)}</pre>
-              </div>
-            </div>
-          </details>
-
-          {/* WAITING HUD */}
-          {ms && inHand && (!myTurn || isDealingBoard) && (
-            <div className="turnToast small">
-              {isDealingBoard ? (
-                <>Dealer distribuindo o board…</>
-              ) : (
-                <>
-                  Aguardando a vez do seat <code>{turnSeat ?? "-"}</code>…
-                  {isSittingOut && <span style={{ color: "orange", marginLeft: 8 }}>(você está em sit-out)</span>}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* ACTION OVERLAY (PokerStars-style) */}
-          {ms && inHand && myTurn && !isDealingBoard && (
-            <div className="actionOverlay" role="region" aria-label="Ações da sua vez">
-              <div className="actionHeader">
-                <div className="small">
-                  Sua vez • Seat <code>#{ms.seatNo}</code> • To call: <code>{toCall}</code> • Stack: <code>{stack}</code>
-                </div>
-                <div className="small" style={{ opacity: 0.85 }}>
-                  Min: <code>{minTo}</code> • Max: <code>{maxRaiseTo}</code>
-                </div>
-              </div>
-
-              <div className="actionRow">
-                <button className="btn actionBtnDanger" onClick={() => act("FOLD")}>
-                  Fold
-                </button>
-
-                <button className="btn" disabled={!canCheck} onClick={() => act("CHECK")}>
-                  Check
-                </button>
-
-                <button className="btn" onClick={() => act("CALL")}>
-                  {toCall === 0 ? "Call (0)" : `Call (${toCall})`}
-                </button>
-
-                <button
-                  className="btn btnPrimary"
-                  disabled={stack <= 0}
-                  onClick={() => (allInIsCall ? act("CALL") : act("RAISE", maxRaiseTo))}
-                  title={allInIsCall ? "Vai all-in pagando o call (se não tiver stack suficiente, paga parcial)." : "Vai all-in dando raise com todo o stack."}
-                >
-                  {allInLabel}
-                </button>
-              </div>
-
-              <div className="actionRaise">
-                <div className="actionRaiseTop">
-                  <div className="small">
-                    Raise to: <code>{clampedRaiseTo || "-"}</code>
-                  </div>
-                  <div className="row" style={{ gap: 8 }}>
-                    <button className="btn" onClick={() => setRaiseTo(minTo)} title="Menor raise permitido (currentBet + minRaise).">
-                      Mín
-                    </button>
-                    <button
-                      className="btn"
-                      onClick={() => {
-                        const potish = Math.max(0, (state.game.currentBet ?? 0) + (state.game.pot?.total ?? 0));
-                        setRaiseTo(Math.min(potish, maxRaiseTo));
-                      }}
-                      title="Sugestão rápida: currentBet + pot (aproximação)."
-                    >
-                      Pote
-                    </button>
-                    <button className="btn" disabled={stack <= 0} onClick={() => setRaiseTo(maxRaiseTo)} title="Preenche com seu All-in.">
-                      Máx
-                    </button>
-                  </div>
-                </div>
-
-                <input
-                  className="range"
-                  type="range"
-                  min={minTo}
-                  max={Math.max(minTo, maxRaiseTo)}
-                  step={step}
-                  value={clampedRaiseTo}
-                  onChange={(e) => setRaiseTo(Number(e.target.value))}
-                  disabled={maxRaiseTo <= 0 || minTo >= maxRaiseTo}
-                />
-
-                <div className="actionRaiseBottom">
-                  <span className="small">
-                    <span style={{ opacity: 0.8 }}>min</span>: <code>{minTo}</code>
-                  </span>
-                  <span className="small">
-                    <span style={{ opacity: 0.8 }}>max</span>: <code>{maxRaiseTo}</code>
-                  </span>
-
-                  <button
-                    className="btn btnPrimary"
-                    disabled={!clampedRaiseTo || clampedRaiseTo < minTo || clampedRaiseTo > maxRaiseTo || clampedRaiseTo === (state.game.currentBet ?? 0)}
-                    onClick={() => act("RAISE", clampedRaiseTo)}
-                  >
-                    Aumentar para {clampedRaiseTo}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
+        </div>
+      ) : (
+        <div className="card" style={{ margin: "0 var(--space-4)", padding: "var(--space-3)" }}>
+          <PokerTableView
+            state={state}
+            mySeatNo={ms?.seatNo ?? null}
+            myCards={myCards}
+            showdownReveals={showdownReveals}
+            payoutAnim={payoutAnim}
+            canSit={!ms}
+            onEmptySeatClick={(sn) => {
+              if (ms) {
+                addToast(`Você já está sentado no seat #${ms.seatNo}.`, "info");
+                return;
+              }
+              setSeatNo(sn);
+              setSitOpen(true);
+            }}
+          />
+        </div>
       )}
+
+      {/* Modals */}
+      {sitOpen && (
+        <div className="modal-overlay" onClick={() => setSitOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="row" style={{ justifyContent: "space-between", marginBottom: "var(--space-4)" }}>
+              <h3 style={{ margin: 0 }}>Sentar na mesa</h3>
+              <button className="btn btn-sm" onClick={() => setSitOpen(false)}>✕</button>
+            </div>
+            
+            <div className="text-sm text-muted mb-2">
+              Assento selecionado: <span className="mono">#{seatNo ?? "-"}</span>
+            </div>
+            
+            {state && (
+              <div className="text-sm text-muted mb-3">
+                Min: <span className="mono">{state.table.bigBlind * 20}</span> •{" "}
+                Max: <span className="mono">{state.table.bigBlind * 100}</span>
+              </div>
+            )}
+            
+            <div className="hr" />
+            
+            <label className="label">Buy-in</label>
+            <input 
+              className="input" 
+              type="number" 
+              min={1} 
+              value={buyIn} 
+              onChange={(e) => setBuyIn(Number(e.target.value))} 
+            />
+            
+            <div className="row gap-2" style={{ justifyContent: "flex-end", marginTop: "var(--space-4)" }}>
+              <button className="btn" onClick={() => setSitOpen(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={sit}>Confirmar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rebuyOpen && (
+        <div className="modal-overlay" onClick={() => setRebuyOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="row" style={{ justifyContent: "space-between", marginBottom: "var(--space-4)" }}>
+              <h3 style={{ margin: 0 }}>Rebuy</h3>
+              <button className="btn btn-sm" onClick={() => setRebuyOpen(false)}>✕</button>
+            </div>
+            
+            <div className="text-sm text-muted mb-2">
+              Stack atual: <span className="mono">{ms?.stack ?? 0}</span>
+            </div>
+            
+            {state && (
+              <div className="text-sm text-muted mb-3">
+                Máximo total: <span className="mono">{state.table.bigBlind * 100}</span>
+              </div>
+            )}
+            
+            <div className="hr" />
+            
+            <label className="label">Valor do rebuy</label>
+            <input
+              className="input"
+              type="number"
+              min={state?.table.bigBlind ?? 1}
+              value={rebuyAmount}
+              onChange={(e) => setRebuyAmount(Number(e.target.value))}
+            />
+            
+            <div className="row gap-2" style={{ justifyContent: "flex-end", marginTop: "var(--space-4)" }}>
+              <button className="btn" onClick={() => setRebuyOpen(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={rebuy}>Confirmar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Waiting Toast */}
+      {ms && inHand && (!myTurn || isDealingBoard) && (
+        <div className="waiting-toast">
+          <div className="text-sm">
+            {isDealingBoard ? (
+              <>🎴 Dealer distribuindo o board...</>
+            ) : (
+              <>
+                ⏳ Aguardando seat <span className="mono">#{turnSeat ?? "-"}</span>
+                {isSittingOut && <span style={{ color: "var(--warning)", marginLeft: "var(--space-2)" }}>(sit-out)</span>}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Action Overlay */}
+      {ms && inHand && myTurn && !isDealingBoard && (
+        <div className="action-overlay">
+          <div className="action-header">
+            <div>
+              <div className="text-base">
+                <strong>Sua vez</strong> • Seat <span className="mono">#{ms.seatNo}</span>
+              </div>
+              <div className="text-sm text-muted mt-1">
+                To call: <span className="mono">{toCall}</span> • Stack: <span className="mono">{stack}</span>
+              </div>
+            </div>
+            <div className="text-sm text-muted">
+              Min: <span className="mono">{minTo}</span> • Max: <span className="mono">{maxRaiseTo}</span>
+            </div>
+          </div>
+
+          <div className="action-buttons">
+            <button className="action-btn action-btn-fold" onClick={() => act("FOLD")}>
+              Fold
+            </button>
+
+            <button className="action-btn action-btn-check" disabled={!canCheck} onClick={() => act("CHECK")}>
+              Check
+            </button>
+
+            <button className="action-btn action-btn-call" onClick={() => act("CALL")}>
+              {toCall === 0 ? "Check" : `Call ${toCall}`}
+            </button>
+
+            <button
+              className="action-btn action-btn-raise"
+              disabled={stack <= 0}
+              onClick={() => (allInIsCall ? act("CALL") : act("RAISE", maxRaiseTo))}
+            >
+              {allInLabel}
+            </button>
+          </div>
+
+          <div className="action-slider-section">
+            <div className="action-slider-header">
+              <div className="text-sm">
+                Raise para: <span className="mono" style={{ color: "var(--accent-blue)" }}>{clampedRaiseTo || "-"}</span>
+              </div>
+              <div className="action-slider-presets">
+                <button className="btn btn-sm" onClick={() => setRaiseTo(minTo)}>Mín</button>
+                <button
+                  className="btn btn-sm"
+                  onClick={() => {
+                    const potish = Math.max(0, (state.game.currentBet ?? 0) + (state.game.pot?.total ?? 0));
+                    setRaiseTo(Math.min(potish, maxRaiseTo));
+                  }}
+                >
+                  Pote
+                </button>
+                <button className="btn btn-sm" disabled={stack <= 0} onClick={() => setRaiseTo(maxRaiseTo)}>
+                  Máx
+                </button>
+              </div>
+            </div>
+
+            <input
+              className="action-slider"
+              type="range"
+              min={minTo}
+              max={Math.max(minTo, maxRaiseTo)}
+              step={step}
+              value={clampedRaiseTo}
+              onChange={(e) => setRaiseTo(Number(e.target.value))}
+              disabled={maxRaiseTo <= 0 || minTo >= maxRaiseTo}
+            />
+
+            <div className="action-slider-footer">
+              <span className="text-sm text-muted">
+                <span style={{ opacity: 0.6 }}>min</span>: <span className="mono">{minTo}</span>
+              </span>
+              <button
+                className="btn btn-primary"
+                disabled={!clampedRaiseTo || clampedRaiseTo < minTo || clampedRaiseTo > maxRaiseTo || clampedRaiseTo === (state.game.currentBet ?? 0)}
+                onClick={() => act("RAISE", clampedRaiseTo)}
+              >
+                Raise para {clampedRaiseTo}
+              </button>
+              <span className="text-sm text-muted">
+                <span style={{ opacity: 0.6 }}>max</span>: <span className="mono">{maxRaiseTo}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Chat */}
+      {state && me && (
+        <Chat socket={socket} tableId={tableId} myUserId={me.userId} />
+      )}
+
 
       <ToastManager toasts={toasts} onDismiss={dismissToast} />
     </div>
