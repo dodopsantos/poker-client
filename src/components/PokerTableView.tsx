@@ -444,7 +444,16 @@ export function PokerTableView({
               </div>
             )}
 
-            <div className="pokerBoard">
+            <div className="pokerBoard" style={{ position: 'relative' }}>
+              {/* Street label */}
+              {state.game.board.length > 0 && (
+                <div className="board-street-label">
+                  {state.game.board.length === 3 && "Flop"}
+                  {state.game.board.length === 4 && "Turn"}
+                  {state.game.board.length === 5 && "River"}
+                </div>
+              )}
+              
               {state.game.board.length === 0 ? (
                 <div className="pokerBoardEmpty small">Board (placeholder)</div>
               ) : (

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RequireAuth } from "../../src/components/RequireAuth";
 import { TableCard } from "../../src/components/TableCard";
+import { StatsWidget } from "../../src/components/StatsWidget";
 import { getSocket } from "../../src/lib/socket";
 import { apiFetch } from "../../src/lib/api";
 import { logout } from "../../src/lib/auth";
@@ -101,6 +102,9 @@ function LobbyInner() {
               <p className="lobby-subtitle">Escolha sua mesa e comece a jogar</p>
             </div>
             <div className="row gap-3">
+              <button className="btn" onClick={() => router.push("/leaderboard")}>
+                🏆 Rankings
+              </button>
               <button className="btn btn-success" onClick={createTable}>
                 + Criar Mesa
               </button>
@@ -110,7 +114,10 @@ function LobbyInner() {
             </div>
           </div>
 
-          <div className="lobby-stats">
+          {/* Stats Widget */}
+        <StatsWidget />
+
+        <div className="lobby-stats">
             <div className="stat-item">
               <div className="stat-label">Mesas Ativas</div>
               <div className="stat-value">{activeTables.length}</div>
