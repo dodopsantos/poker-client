@@ -310,15 +310,22 @@ function TableInner() {
   const minTo = state ? Math.max(0, (state.game.currentBet ?? 0) + (state.game.minRaise ?? 0)) : 0;
   const step = state ? Math.max(1, state.table.bigBlind ?? 1) : 1;
 
+  // Só exibe ações que fazem sentido no momento (ex.: se existe aposta, não mostra Check)
+  const canCall = toCall > 0 && stack > 0;
+  const callAmount = Math.min(toCall, stack);
+  const canRaise =
+    Boolean(state) &&
+    stack > toCall &&
+    maxRaiseTo > (state?.game.currentBet ?? 0) &&
+    minTo > 0 &&
+    minTo <= maxRaiseTo;
+
   const clampedRaiseTo =
     ms && state
       ? maxRaiseTo > 0
         ? Math.min(Math.max(raiseTo || minTo, minTo), maxRaiseTo)
         : 0
       : 0;
-
-  const allInIsCall = toCall >= stack;
-  const allInLabel = allInIsCall ? `All-in (${stack})` : `All-in (${maxRaiseTo})`;
 
   return (
     <div className="table-page">
@@ -553,72 +560,77 @@ function TableInner() {
                       Fold
                     </button>
 
-                    <button className="action-btn action-btn-check" disabled={!canCheck} onClick={() => act("CHECK")}>
-                      Check
-                    </button>
-
-                    <button className="action-btn action-btn-call" onClick={() => act("CALL")}>
-                      {toCall === 0 ? "Check" : `Call ${toCall}`}
-                    </button>
-
-                    <button
-                      className="action-btn action-btn-raise"
-                      disabled={stack <= 0}
-                      onClick={() => (allInIsCall ? act("CALL") : act("RAISE", maxRaiseTo))}
-                    >
-                      {allInLabel}
-                    </button>
-                  </div>
-
-                  <div className="action-slider-section">
-                    <div className="action-slider-header">
-                      <div className="text-sm">
-                        Raise para: <span className="mono" style={{ color: "var(--accent-blue)" }}>{clampedRaiseTo || "-"}</span>
-                      </div>
-                      <div className="action-slider-presets">
-                        <button className="btn btn-sm" onClick={() => setRaiseTo(minTo)}>Mín</button>
-                        <button
-                          className="btn btn-sm"
-                          onClick={() => {
-                            const potish = Math.max(0, (state.game.currentBet ?? 0) + (state.game.pot?.total ?? 0));
-                            setRaiseTo(Math.min(potish, maxRaiseTo));
-                          }}
-                        >
-                          Pote
-                        </button>
-                        <button className="btn btn-sm" disabled={stack <= 0} onClick={() => setRaiseTo(maxRaiseTo)}>
-                          Máx
-                        </button>
-                      </div>
-                    </div>
-
-                    <input
-                      className="action-slider"
-                      type="range"
-                      min={minTo}
-                      max={Math.max(minTo, maxRaiseTo)}
-                      step={step}
-                      value={clampedRaiseTo}
-                      onChange={(e) => setRaiseTo(Number(e.target.value))}
-                      disabled={maxRaiseTo <= 0 || minTo >= maxRaiseTo}
-                    />
-
-                    <div className="action-slider-footer">
-                      <span className="text-sm text-muted">
-                        <span style={{ opacity: 0.6 }}>min</span>: <span className="mono">{minTo}</span>
-                      </span>
-                      <button
-                        className="btn btn-primary"
-                        disabled={!clampedRaiseTo || clampedRaiseTo < minTo || clampedRaiseTo > maxRaiseTo || clampedRaiseTo === (state.game.currentBet ?? 0)}
-                        onClick={() => act("RAISE", clampedRaiseTo)}
-                      >
-                        Raise para {clampedRaiseTo}
+                    {canCheck && (
+                      <button className="action-btn action-btn-check" onClick={() => act("CHECK")}>
+                        Check
                       </button>
-                      <span className="text-sm text-muted">
-                        <span style={{ opacity: 0.6 }}>max</span>: <span className="mono">{maxRaiseTo}</span>
-                      </span>
-                    </div>
+                    )}
+
+                    {!canCheck && (
+                      <button className="action-btn action-btn-call" disabled={!canCall} onClick={() => act("CALL")}>
+                        {toCall > stack ? `Call ${callAmount} (All-in)` : `Call ${toCall}`}
+                      </button>
+                    )}
+
+                    {/* All-in só aparece quando for um raise (evita duplicar com Call all-in) */}
+                    {canRaise && (
+                      <button className="action-btn action-btn-raise" onClick={() => act("RAISE", maxRaiseTo)}>
+                        All-in ({maxRaiseTo})
+                      </button>
+                    )}
                   </div>
+
+                  {canRaise && (
+                    <div className="action-slider-section">
+                      <div className="action-slider-header">
+                        <div className="text-sm">
+                          Raise para: <span className="mono" style={{ color: "var(--accent-blue)" }}>{clampedRaiseTo || "-"}</span>
+                        </div>
+                        <div className="action-slider-presets">
+                          <button className="btn btn-sm" onClick={() => setRaiseTo(minTo)}>Mín</button>
+                          <button
+                            className="btn btn-sm"
+                            onClick={() => {
+                              const potish = Math.max(0, (state.game.currentBet ?? 0) + (state.game.pot?.total ?? 0));
+                              setRaiseTo(Math.min(potish, maxRaiseTo));
+                            }}
+                          >
+                            Pote
+                          </button>
+                          <button className="btn btn-sm" onClick={() => setRaiseTo(maxRaiseTo)}>
+                            Máx
+                          </button>
+                        </div>
+                      </div>
+
+                      <input
+                        className="action-slider"
+                        type="range"
+                        min={minTo}
+                        max={Math.max(minTo, maxRaiseTo)}
+                        step={step}
+                        value={clampedRaiseTo}
+                        onChange={(e) => setRaiseTo(Number(e.target.value))}
+                        disabled={maxRaiseTo <= 0 || minTo >= maxRaiseTo}
+                      />
+
+                      <div className="action-slider-footer">
+                        <span className="text-sm text-muted">
+                          <span style={{ opacity: 0.6 }}>min</span>: <span className="mono">{minTo}</span>
+                        </span>
+                        <button
+                          className="btn btn-primary"
+                          disabled={!clampedRaiseTo || clampedRaiseTo < minTo || clampedRaiseTo > maxRaiseTo || clampedRaiseTo === (state.game.currentBet ?? 0)}
+                          onClick={() => act("RAISE", clampedRaiseTo)}
+                        >
+                          Raise para {clampedRaiseTo}
+                        </button>
+                        <span className="text-sm text-muted">
+                          <span style={{ opacity: 0.6 }}>max</span>: <span className="mono">{maxRaiseTo}</span>
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -21,16 +21,22 @@
   bottom: 0;
   z-index: 100;
   pointer-events: none; /* permite clicar na mesa; habilitamos nos painéis */
-  padding: 16px 16px 18px;
+  /* Responsivo (sem tamanhos fixos em px) */
+  padding: clamp(0.75rem, 1.4vw, 1.25rem);
 }
 
 .table-hud-inner {
-  max-width: 1280px;
+  /* Mesma “largura útil” do board (container do app) */
+  max-width: min(96vw, 87.5rem); /* 87.5rem ≈ 1400px */
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 14px;
-  align-items: end;
+  /* Proporção mais próxima do board: actions mais “largas” */
+  grid-template-columns: minmax(clamp(18rem, 28vw, 30rem), 0.9fr) minmax(0, 1.6fr);
+  gap: clamp(0.6rem, 1.1vw, 0.95rem);
+  /* Altura padrão do HUD (chat e actions iguais, responsivo) */
+  --hud-card-h: clamp(14.4rem, 25.6vh, 20.8rem);
+
+  align-items: stretch;
 }
 
 .hud-left,
@@ -39,20 +45,23 @@
 }
 
 .hud-left {
-  height: 320px;
+  /* Aumenta o chat para ocupar mais espaço (como no PokerStars) */
+  height: var(--hud-card-h);
 }
 
 .hud-right {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: clamp(0.5rem, 1vw, 0.85rem);
+  height: var(--hud-card-h);
+  min-height: 0;
 }
 
 .action-panel {
   background: linear-gradient(to top, rgba(15, 19, 26, 0.98) 0%, rgba(15, 19, 26, 0.98) 85%, rgba(15, 19, 26, 0.85) 100%);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 14px;
-  padding: 16px 18px;
+  border-radius: 0.95rem;
+  padding: clamp(0.85rem, 1.4vw, 1.2rem);
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.55);
   animation: slideUpFade 0.25s ease-out;
 }
@@ -60,9 +69,39 @@
 .preaction-panel {
   background: rgba(15, 19, 26, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  padding: 12px 14px;
+  border-radius: 0.95rem;
+  padding: clamp(0.7rem, 1.2vw, 1rem);
   box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.45);
+}
+
+/* Mantém altura padronizada entre chat e actions (não cresce pelo conteúdo) */
+.action-panel,
+.preaction-panel {
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Conteúdo que pode “crescer” fica dentro e não altera a altura do card */
+.action-panel > *,
+.preaction-panel > * {
+  flex: 0 0 auto;
+}
+
+/* Empurra o hint da pré-ação para o rodapé e padroniza o preenchimento */
+.preaction-hint {
+  margin-top: auto;
+}
+
+/* Se alguma área precisar rolar, use esta classe */
+.hud-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 .preaction-title {
@@ -109,7 +148,7 @@
     grid-template-columns: 1fr;
   }
   .hud-left {
-    height: 260px;
+    height: var(--hud-card-h);
   }
 }
 
@@ -128,25 +167,25 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin-bottom: clamp(0.75rem, 1.2vw, 1rem);
+  padding-bottom: clamp(0.55rem, 1vw, 0.8rem);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .action-buttons {
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: clamp(0.55rem, 1vw, 0.85rem);
+  margin-bottom: clamp(0.75rem, 1.2vw, 1rem);
   flex-wrap: wrap;
 }
 
 .action-btn {
   flex: 1;
-  min-width: 90px;
-  padding: 14px 18px;
-  font-size: 15px;
+  min-width: clamp(6.5rem, 10vw, 8.5rem);
+  padding: clamp(0.65rem, 1.1vw, 0.95rem) clamp(0.75rem, 1.3vw, 1.15rem);
+  font-size: clamp(0.9rem, 1.1vw, 0.98rem);
   font-weight: 600;
-  border-radius: 10px;
+  border-radius: 0.7rem;
   border: 1px solid rgba(255, 255, 255, 0.18);
   cursor: pointer;
   transition: all 0.15s ease;
@@ -208,8 +247,8 @@
 .action-slider-section {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 0.85rem;
+  padding: clamp(0.75rem, 1.2vw, 1rem);
 }
 
 .action-slider-header {
@@ -221,7 +260,7 @@
 
 .action-slider-presets {
   display: flex;
-  gap: 8px;
+  gap: clamp(0.35rem, 0.8vw, 0.55rem);
 }
 
 .action-slider-footer {
@@ -233,24 +272,24 @@
 
 .action-slider {
   width: 100%;
-  height: 8px;
+  height: clamp(0.4rem, 0.6vw, 0.55rem);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
-  margin: 8px 0;
+  margin: clamp(0.35rem, 0.8vw, 0.55rem) 0;
 }
 
 .action-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 22px;
-  height: 22px;
+  width: clamp(1.05rem, 1.6vw, 1.35rem);
+  height: clamp(1.05rem, 1.6vw, 1.35rem);
   border-radius: 50%;
   background: #3b82f6;
-  border: 3px solid white;
+  border: 0.2rem solid white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   transition: all 0.15s ease;
@@ -318,4 +357,18 @@
     flex: 1 1 calc(50% - 6px);
     min-width: 0;
   }
+}
+
+
+/* Painéis do lado direito sempre ocupam a mesma altura do chat (mesmo com menos opções) */
+.hud-right > .action-panel,
+.hud-right > .preaction-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* A action-panel distribui conteúdo para manter proporção */
+.action-panel .actions-footer-spacer {
+  flex: 1;
 }
