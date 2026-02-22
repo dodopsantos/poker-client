@@ -16,13 +16,20 @@ interface ChatProps {
   socket: Socket;
   tableId: string;
   myUserId: string;
+  /**
+   * floating: botão flutuante (padrão)
+   * docked: painel fixo/dockado (PokerStars-like)
+   */
+  variant?: "floating" | "docked";
+  className?: string;
 }
 
-export function Chat({ socket, tableId, myUserId }: ChatProps) {
+export function Chat({ socket, tableId, myUserId, variant = "floating", className }: ChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  // No modo docked o chat fica sempre aberto
+  const [isOpen, setIsOpen] = useState(variant === "docked");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,10 +63,13 @@ export function Chat({ socket, tableId, myUserId }: ChatProps) {
 
   // Auto-scroll ao receber nova mensagem
   useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
+    if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isOpen]);
+
+  // Se estiver dockado, sempre aberto
+  useEffect(() => {
+    if (variant === "docked") setIsOpen(true);
+  }, [variant]);
 
   function sendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -74,69 +84,84 @@ export function Chat({ socket, tableId, myUserId }: ChatProps) {
 
   return (
     <>
-      {/* Toggle button */}
-      <button
-        className="chat-toggle"
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          width: "56px",
-          height: "56px",
-          borderRadius: "50%",
-          background: "var(--accent-blue)",
-          border: "none",
-          color: "white",
-          fontSize: "24px",
-          cursor: "pointer",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-          zIndex: 110,
-          transition: "all 0.2s ease",
-        }}
-      >
-        {isOpen ? "✕" : "💬"}
-        {!isOpen && unreadCount > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              top: "-4px",
-              right: "-4px",
-              background: "var(--danger)",
-              color: "white",
-              borderRadius: "50%",
-              width: "20px",
-              height: "20px",
-              fontSize: "12px",
-              display: "grid",
-              placeItems: "center",
-              fontWeight: "bold",
-            }}
-          >
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
-      </button>
+      {/* Toggle button (somente no modo floating) */}
+      {variant === "floating" && (
+        <button
+          className="chat-toggle"
+          onClick={() => setIsOpen(!isOpen)}
+          style={{
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            width: "56px",
+            height: "56px",
+            borderRadius: "50%",
+            background: "var(--accent-blue)",
+            border: "none",
+            color: "white",
+            fontSize: "24px",
+            cursor: "pointer",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+            zIndex: 110,
+            transition: "all 0.2s ease",
+          }}
+        >
+          {isOpen ? "✕" : "💬"}
+          {!isOpen && unreadCount > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: "-4px",
+                right: "-4px",
+                background: "var(--danger)",
+                color: "white",
+                borderRadius: "50%",
+                width: "20px",
+                height: "20px",
+                fontSize: "12px",
+                display: "grid",
+                placeItems: "center",
+                fontWeight: "bold",
+              }}
+            >
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* Chat panel */}
       {isOpen && (
         <div
-          className="chat-panel"
-          style={{
-            position: "fixed",
-            bottom: "90px",
-            right: "20px",
-            width: "340px",
-            height: "480px",
-            background: "var(--bg-card)",
-            border: "1px solid var(--border-strong)",
-            borderRadius: "var(--radius-lg)",
-            boxShadow: "var(--shadow-xl)",
-            display: "flex",
-            flexDirection: "column",
-            zIndex: 109,
-            animation: "slideUp 0.2s ease-out",
-          }}
+          className={["chat-panel", className].filter(Boolean).join(" ")}
+          style={
+            variant === "floating"
+              ? {
+                  position: "fixed",
+                  bottom: "90px",
+                  right: "20px",
+                  width: "340px",
+                  height: "480px",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-strong)",
+                  borderRadius: "var(--radius-lg)",
+                  boxShadow: "var(--shadow-xl)",
+                  display: "flex",
+                  flexDirection: "column",
+                  zIndex: 109,
+                  animation: "slideUp 0.2s ease-out",
+                }
+              : {
+                  width: "100%",
+                  height: "100%",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-strong)",
+                  borderRadius: "var(--radius-lg)",
+                  boxShadow: "var(--shadow-lg)",
+                  display: "flex",
+                  flexDirection: "column",
+                }
+          }
         >
           {/* Header */}
           <div

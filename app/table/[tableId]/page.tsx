@@ -24,6 +24,8 @@ function decodeJwt(token: string | null): any {
 
 type Action = "FOLD" | "CHECK" | "CALL" | "RAISE";
 
+type AutoAction = "CHECK_FOLD" | "FOLD" | "CALL_ANY" | null;
+
 export default function TablePage() {
   return (
     <RequireAuth>
@@ -56,6 +58,7 @@ function TableInner() {
     | null
   >(null);
   const [raiseTo, setRaiseTo] = useState<number>(0);
+  const [autoAction, setAutoAction] = useState<AutoAction>(null);
 
   const me = useMemo(() => decodeJwt(getToken()) as { userId: string; username: string } | null, []);
 
@@ -146,6 +149,44 @@ function TableInner() {
       socket.off("table:private_cards");
     };
   }, [socket, tableId]);
+
+  // Executa auto-actions quando virar a sua vez (PokerStars-like)
+  useEffect(() => {
+    if (!state || !me) return;
+    const ms = state.seats.find((s) => s.user?.id === me.userId) ?? null;
+    if (!ms) return;
+    const inHand = Boolean(state.game.handId);
+    const myTurn = inHand && Boolean(ms.isTurn);
+    const isDealingBoard = Boolean((state.game as any)?.isDealingBoard);
+    if (!myTurn || isDealingBoard) return;
+    if (!autoAction) return;
+
+    const currentBet = state.game.currentBet ?? 0;
+    const myBet = ms.bet ?? 0;
+    const toCall = Math.max(0, currentBet - myBet);
+    const canCheck = toCall === 0;
+    const stack = ms.stack ?? 0;
+
+    // Nota: para segurança, só dispara ações que são válidas no momento.
+    if (autoAction === "CHECK_FOLD") {
+      if (canCheck) act("CHECK");
+      else act("FOLD");
+      setAutoAction(null);
+      return;
+    }
+    if (autoAction === "FOLD") {
+      act("FOLD");
+      setAutoAction(null);
+      return;
+    }
+    if (autoAction === "CALL_ANY") {
+      if (canCheck) act("CHECK");
+      else if (toCall > 0 && stack >= toCall) act("CALL");
+      else act("FOLD");
+      setAutoAction(null);
+      return;
+    }
+  }, [autoAction, state, me]);
 
   function mySeat() {
     if (!state || !me) return null;
@@ -451,99 +492,138 @@ function TableInner() {
         </div>
       )}
 
-      {/* Action Overlay */}
-      {ms && inHand && myTurn && !isDealingBoard && (
-        <div className="action-overlay">
-          <div className="action-header">
-            <div>
-              <div className="text-base">
-                <strong>Sua vez</strong> • Seat <span className="mono">#{ms.seatNo}</span>
-              </div>
-              <div className="text-sm text-muted mt-1">
-                To call: <span className="mono">{toCall}</span> • Stack: <span className="mono">{stack}</span>
-              </div>
-            </div>
-            <div className="text-sm text-muted">
-              Min: <span className="mono">{minTo}</span> • Max: <span className="mono">{maxRaiseTo}</span>
-            </div>
-          </div>
-
-          <div className="action-buttons">
-            <button className="action-btn action-btn-fold" onClick={() => act("FOLD")}>
-              Fold
-            </button>
-
-            <button className="action-btn action-btn-check" disabled={!canCheck} onClick={() => act("CHECK")}>
-              Check
-            </button>
-
-            <button className="action-btn action-btn-call" onClick={() => act("CALL")}>
-              {toCall === 0 ? "Check" : `Call ${toCall}`}
-            </button>
-
-            <button
-              className="action-btn action-btn-raise"
-              disabled={stack <= 0}
-              onClick={() => (allInIsCall ? act("CALL") : act("RAISE", maxRaiseTo))}
-            >
-              {allInLabel}
-            </button>
-          </div>
-
-          <div className="action-slider-section">
-            <div className="action-slider-header">
-              <div className="text-sm">
-                Raise para: <span className="mono" style={{ color: "var(--accent-blue)" }}>{clampedRaiseTo || "-"}</span>
-              </div>
-              <div className="action-slider-presets">
-                <button className="btn btn-sm" onClick={() => setRaiseTo(minTo)}>Mín</button>
-                <button
-                  className="btn btn-sm"
-                  onClick={() => {
-                    const potish = Math.max(0, (state.game.currentBet ?? 0) + (state.game.pot?.total ?? 0));
-                    setRaiseTo(Math.min(potish, maxRaiseTo));
-                  }}
-                >
-                  Pote
-                </button>
-                <button className="btn btn-sm" disabled={stack <= 0} onClick={() => setRaiseTo(maxRaiseTo)}>
-                  Máx
-                </button>
-              </div>
+      {/* HUD (Chat + Actions) */}
+      {state && me && (
+        <div className="table-hud">
+          <div className="table-hud-inner">
+            <div className="hud-left">
+              <Chat socket={socket} tableId={tableId} myUserId={me.userId} variant="docked" />
             </div>
 
-            <input
-              className="action-slider"
-              type="range"
-              min={minTo}
-              max={Math.max(minTo, maxRaiseTo)}
-              step={step}
-              value={clampedRaiseTo}
-              onChange={(e) => setRaiseTo(Number(e.target.value))}
-              disabled={maxRaiseTo <= 0 || minTo >= maxRaiseTo}
-            />
+            <div className="hud-right">
+              {/* Quando NÃO é sua vez: opções de auto-ação */}
+              {ms && inHand && !myTurn && !isDealingBoard && (
+                <div className="preaction-panel">
+                  <div className="preaction-title">Pré-ação</div>
+                  <div className="preaction-actions">
+                    <button
+                      className={"preaction-btn" + (autoAction === "CHECK_FOLD" ? " active" : "")}
+                      onClick={() => setAutoAction(autoAction === "CHECK_FOLD" ? null : "CHECK_FOLD")}
+                    >
+                      Check/Fold
+                    </button>
+                    <button
+                      className={"preaction-btn" + (autoAction === "CALL_ANY" ? " active" : "")}
+                      onClick={() => setAutoAction(autoAction === "CALL_ANY" ? null : "CALL_ANY")}
+                    >
+                      Call any
+                    </button>
+                    <button
+                      className={"preaction-btn" + (autoAction === "FOLD" ? " active" : "")}
+                      onClick={() => setAutoAction(autoAction === "FOLD" ? null : "FOLD")}
+                    >
+                      Auto-fold
+                    </button>
+                  </div>
+                  <div className="preaction-hint text-sm text-muted">
+                    A ação escolhida será executada automaticamente quando for sua vez.
+                  </div>
+                </div>
+              )}
 
-            <div className="action-slider-footer">
-              <span className="text-sm text-muted">
-                <span style={{ opacity: 0.6 }}>min</span>: <span className="mono">{minTo}</span>
-              </span>
-              <button
-                className="btn btn-primary"
-                disabled={!clampedRaiseTo || clampedRaiseTo < minTo || clampedRaiseTo > maxRaiseTo || clampedRaiseTo === (state.game.currentBet ?? 0)}
-                onClick={() => act("RAISE", clampedRaiseTo)}
-              >
-                Raise para {clampedRaiseTo}
-              </button>
-              <span className="text-sm text-muted">
-                <span style={{ opacity: 0.6 }}>max</span>: <span className="mono">{maxRaiseTo}</span>
-              </span>
+              {/* Quando é sua vez: ações normais */}
+              {ms && inHand && myTurn && !isDealingBoard && (
+                <div className="action-panel">
+                  <div className="action-header">
+                    <div>
+                      <div className="text-base">
+                        <strong>Sua vez</strong> • Seat <span className="mono">#{ms.seatNo}</span>
+                      </div>
+                      <div className="text-sm text-muted mt-1">
+                        To call: <span className="mono">{toCall}</span> • Stack: <span className="mono">{stack}</span>
+                      </div>
+                    </div>
+                    <div className="text-sm text-muted">
+                      Min: <span className="mono">{minTo}</span> • Max: <span className="mono">{maxRaiseTo}</span>
+                    </div>
+                  </div>
+
+                  <div className="action-buttons">
+                    <button className="action-btn action-btn-fold" onClick={() => act("FOLD")}>
+                      Fold
+                    </button>
+
+                    <button className="action-btn action-btn-check" disabled={!canCheck} onClick={() => act("CHECK")}>
+                      Check
+                    </button>
+
+                    <button className="action-btn action-btn-call" onClick={() => act("CALL")}>
+                      {toCall === 0 ? "Check" : `Call ${toCall}`}
+                    </button>
+
+                    <button
+                      className="action-btn action-btn-raise"
+                      disabled={stack <= 0}
+                      onClick={() => (allInIsCall ? act("CALL") : act("RAISE", maxRaiseTo))}
+                    >
+                      {allInLabel}
+                    </button>
+                  </div>
+
+                  <div className="action-slider-section">
+                    <div className="action-slider-header">
+                      <div className="text-sm">
+                        Raise para: <span className="mono" style={{ color: "var(--accent-blue)" }}>{clampedRaiseTo || "-"}</span>
+                      </div>
+                      <div className="action-slider-presets">
+                        <button className="btn btn-sm" onClick={() => setRaiseTo(minTo)}>Mín</button>
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => {
+                            const potish = Math.max(0, (state.game.currentBet ?? 0) + (state.game.pot?.total ?? 0));
+                            setRaiseTo(Math.min(potish, maxRaiseTo));
+                          }}
+                        >
+                          Pote
+                        </button>
+                        <button className="btn btn-sm" disabled={stack <= 0} onClick={() => setRaiseTo(maxRaiseTo)}>
+                          Máx
+                        </button>
+                      </div>
+                    </div>
+
+                    <input
+                      className="action-slider"
+                      type="range"
+                      min={minTo}
+                      max={Math.max(minTo, maxRaiseTo)}
+                      step={step}
+                      value={clampedRaiseTo}
+                      onChange={(e) => setRaiseTo(Number(e.target.value))}
+                      disabled={maxRaiseTo <= 0 || minTo >= maxRaiseTo}
+                    />
+
+                    <div className="action-slider-footer">
+                      <span className="text-sm text-muted">
+                        <span style={{ opacity: 0.6 }}>min</span>: <span className="mono">{minTo}</span>
+                      </span>
+                      <button
+                        className="btn btn-primary"
+                        disabled={!clampedRaiseTo || clampedRaiseTo < minTo || clampedRaiseTo > maxRaiseTo || clampedRaiseTo === (state.game.currentBet ?? 0)}
+                        onClick={() => act("RAISE", clampedRaiseTo)}
+                      >
+                        Raise para {clampedRaiseTo}
+                      </button>
+                      <span className="text-sm text-muted">
+                        <span style={{ opacity: 0.6 }}>max</span>: <span className="mono">{maxRaiseTo}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      )}
-      {/* Chat */}
-      {state && me && (
-        <Chat socket={socket} tableId={tableId} myUserId={me.userId} />
       )}
 
 
