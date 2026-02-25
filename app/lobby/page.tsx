@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RequireAuth } from "../../src/components/RequireAuth";
-import { TableCard } from "../../src/components/TableCard";
 import { StatsWidget } from "../../src/components/StatsWidget";
 import { getSocket } from "../../src/lib/socket";
 import { apiFetch } from "../../src/lib/api";
@@ -32,6 +31,8 @@ function LobbyInner() {
   const [tables, setTables] = useState<LobbyTable[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [hideFull, setHideFull] = useState(false);
 
   const socket = useMemo(() => getSocket(), []);
 
@@ -92,16 +93,45 @@ function LobbyInner() {
   const runningTables = tables.filter(t => t.status === "RUNNING").length;
   const totalPlayers = tables.reduce((sum, t) => sum + t.players, 0);
 
+  const filteredTables = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return tables
+      .filter(t => (hideFull ? t.players < t.maxPlayers && t.status !== "CLOSED" : true))
+      .filter(t => (q ? t.name.toLowerCase().includes(q) : true))
+      // Mildly opinionated ordering: running first, then open; lower blinds first
+      .slice()
+      .sort((a, b) => {
+        const w = (s: LobbyTable["status"]) => (s === "RUNNING" ? 0 : s === "OPEN" ? 1 : 2);
+        const d = w(a.status) - w(b.status);
+        if (d !== 0) return d;
+        return a.bigBlind - b.bigBlind;
+      });
+  }, [tables, query, hideFull]);
+
+  function canJoin(t: LobbyTable) {
+    const isFull = t.players >= t.maxPlayers;
+    return t.status !== "CLOSED" && !isFull;
+  }
+
+  function statusLabel(status: LobbyTable["status"]) {
+    if (status === "RUNNING") return { label: "Em jogo", className: "status-running" };
+    if (status === "OPEN") return { label: "Disponível", className: "status-open" };
+    return { label: "Fechada", className: "status-full" };
+  }
+
   return (
     <div className="lobby-page">
       <div className="container">
         <div className="lobby-header">
           <div className="row" style={{ justifyContent: "space-between", marginBottom: "var(--space-4)" }}>
             <div>
-              <h1 className="lobby-title">Lobby</h1>
+              <h1 className="lobby-title"><span>Lobby</span><span className="lobby-premium-badge">Elite</span></h1>
               <p className="lobby-subtitle">Escolha sua mesa e comece a jogar</p>
             </div>
             <div className="row gap-3">
+              <button className="btn" onClick={() => router.push("/history")}>
+                🃏 Histórico
+              </button>
               <button className="btn" onClick={() => router.push("/leaderboard")}>
                 🏆 Rankings
               </button>
@@ -159,19 +189,91 @@ function LobbyInner() {
             </button>
           </div>
         ) : (
-          <div className="tables-grid">
-            {tables.map((t) => (
-              <TableCard
-                key={t.id}
-                id={t.id}
-                name={t.name}
-                smallBlind={t.smallBlind}
-                bigBlind={t.bigBlind}
-                maxPlayers={t.maxPlayers}
-                status={t.status}
-                players={t.players}
-              />
-            ))}
+          <div className="lobby-list card">
+            <div className="lobby-toolbar">
+              <div className="lobby-search">
+                <span className="lobby-search-icon">⌕</span>
+                <input
+                  className="lobby-search-input"
+                  placeholder="Buscar mesa..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+
+              <label className="lobby-toggle">
+                <input
+                  type="checkbox"
+                  checked={hideFull}
+                  onChange={(e) => setHideFull(e.target.checked)}
+                />
+                <span>Somente disponíveis</span>
+              </label>
+            </div>
+
+            <div className="lobby-table-wrap" role="region" aria-label="Lista de mesas">
+              <table className="lobby-table">
+                <thead>
+                  <tr>
+                    <th>Mesa</th>
+                    <th className="col-stakes">Blinds</th>
+                    <th className="col-players">Jogadores</th>
+                    <th className="col-status">Status</th>
+                    <th className="col-cta" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTables.map((t) => {
+                    const joinable = canJoin(t);
+                    const st = statusLabel(t.status);
+
+                    return (
+                      <tr
+                        key={t.id}
+                        className={joinable ? "row-clickable" : "row-disabled"}
+                        onClick={() => joinable && router.push(`/table/${t.id}`)}
+                      >
+                        <td className="cell-name">
+                          <div className="name-main">{t.name}</div>
+                          <div className="name-sub">Max {t.maxPlayers} • ID {t.id.slice(0, 6)}</div>
+                        </td>
+
+                        <td className="col-stakes">
+                          <span className="stakes-pill">{t.smallBlind} / {t.bigBlind}</span>
+                        </td>
+
+                        <td className="col-players">
+                          <span className={t.players >= t.maxPlayers ? "players-full" : "players-ok"}>
+                            {t.players}/{t.maxPlayers}
+                          </span>
+                        </td>
+
+                        <td className="col-status">
+                          <span className={`table-status-badge ${st.className}`}>{st.label}</span>
+                        </td>
+
+                        <td className="col-cta">
+                          <button
+                            className="btn btn-primary btn-join"
+                            disabled={!joinable}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (joinable) router.push(`/table/${t.id}`);
+                            }}
+                          >
+                            Entrar
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredTables.length === 0 && (
+              <div className="lobby-empty-inline">Nenhuma mesa encontrada com esses filtros.</div>
+            )}
           </div>
         )}
       </div>
