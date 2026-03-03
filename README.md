@@ -1,25 +1,39 @@
-# Poker Web Client (Next.js + TS)
+# Poker Frontend
 
-Cliente mínimo para o backend (Express + Socket.IO) do seu MVP de Poker.
-
-## Requisitos
-- Node 18+
-- Backend rodando (ex.: http://localhost:3001)
+Interface web do sistema de poker online com Next.js 14 e React.
 
 ## Setup
+
 ```bash
-npm i
-cp .env.example .env.local
+# 1. Instalar dependências
+npm install
+
+# 2. Iniciar servidor de desenvolvimento
 npm run dev
+
+# 3. Abrir navegador
+# http://localhost:3000
 ```
 
-Abra: http://localhost:3000
+## Build para Produção
 
-## Fluxo
-1) /login -> registrar ou logar (salva token no localStorage)
-2) /lobby -> cria mesa + entra
-3) /table/:tableId -> senta com buy-in e sai com cashout
+```bash
+npm run build
+npm start
+```
 
-## Observações
-- O Socket.IO usa o token do localStorage no handshake.
-- Após login/logout o socket é desconectado para reconectar com token novo.
+## Principais Páginas
+
+- `/login` - Login e registro
+- `/lobby` - Lobby principal (lista de mesas)
+- `/table/[id]` - Mesa de poker
+- `/profile` - Perfil do usuário
+- `/history` - Histórico de mãos
+- `/leaderboard` - Rankings e estatísticas
+- `/stats` - Estatísticas detalhadas
+
+## Variáveis de Ambiente (opcional)
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```

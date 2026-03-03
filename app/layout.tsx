@@ -5,6 +5,8 @@ import "./action-overlay-fix.css";
 import "./board-premium.css";
 import type { Metadata } from "next";
 import "./leaderboard.css";
+import "./hand-history.css";
+import "./profile.css";
 
 export const metadata: Metadata = {
   title: "Poker Pro - Texas Hold'em Online",

@@ -1,6 +1,7 @@
 "use client";
 
 const KEY = "poker_token";
+const USER_KEY = "poker_user";
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -13,6 +14,24 @@ export function setToken(token: string) {
 
 export function clearToken() {
   window.localStorage.removeItem(KEY);
+  window.localStorage.removeItem(USER_KEY);
+}
+
+export function getUserData(): any | null {
+  if (typeof window === "undefined") return null;
+  const data = window.localStorage.getItem(USER_KEY);
+  if (!data) return null;
+  try {
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+export function setUserData(user: any) {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
 }
 
 /**

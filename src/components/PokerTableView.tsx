@@ -639,15 +639,15 @@ export function PokerTableView({
                             if (revealed && revealed.length >= 2) {
                               return (
                                 <>
-                                  <Card size="sm" code={revealed[0]} />
-                                  <Card size="sm" code={revealed[1]} />
+                                  <Card size="md" code={revealed[0]} />
+                                  <Card size="md" code={revealed[1]} />
                                 </>
                               );
                             }
                             return (
                               <>
-                                <Card size="sm" faceDown />
-                                <Card size="sm" faceDown />
+                                <Card size="md" faceDown />
+                                <Card size="md" faceDown />
                               </>
                             );
                           })()}
