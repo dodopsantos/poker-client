@@ -6,7 +6,8 @@ import { RequireAuth } from "../../src/components/RequireAuth";
 import { StatsWidget } from "../../src/components/StatsWidget";
 import { getSocket } from "../../src/lib/socket";
 import { apiFetch } from "../../src/lib/api";
-import { logout } from "../../src/lib/auth";
+import { logout, getUserData } from "../../src/lib/auth";
+import { DailyBonus } from "../../src/components/DailyBonus";
 
 type LobbyTable = {
   id: string;
@@ -33,8 +34,17 @@ function LobbyInner() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [hideFull, setHideFull] = useState(false);
+  const [userRole, setUserRole] = useState<string>("USER");
 
   const socket = useMemo(() => getSocket(), []);
+
+  // Buscar role do usuário
+  useEffect(() => {
+    const userData = getUserData();
+    if (userData?.role) {
+      setUserRole(userData.role);
+    }
+  }, []);
 
   useEffect(() => {
     function onTables(payload: LobbyTable[]) {
@@ -89,6 +99,17 @@ function LobbyInner() {
     router.push("/login");
   }
 
+  async function fetchWallet() {
+    try {
+      // Buscar saldo atualizado (opcional - pode melhorar depois)
+      // Por enquanto, apenas force re-render
+    } catch (err) {
+      console.error("Failed to fetch wallet:", err);
+    }
+  }
+
+
+
   const activeTables = tables.filter(t => t.status !== "CLOSED");
   const runningTables = tables.filter(t => t.status === "RUNNING").length;
   const totalPlayers = tables.reduce((sum, t) => sum + t.players, 0);
@@ -129,15 +150,20 @@ function LobbyInner() {
               <p className="lobby-subtitle">Escolha sua mesa e comece a jogar</p>
             </div>
             <div className="row gap-3">
+              <button className="btn" onClick={() => router.push("/profile")}>
+                👤 Perfil
+              </button>
               <button className="btn" onClick={() => router.push("/history")}>
                 🃏 Histórico
               </button>
               <button className="btn" onClick={() => router.push("/leaderboard")}>
                 🏆 Rankings
               </button>
-              <button className="btn btn-success" onClick={createTable}>
-                + Criar Mesa
-              </button>
+              {userRole === "ADMIN" && (
+                <button className="btn btn-success" onClick={createTable}>
+                  + Criar Mesa
+                </button>
+              )}
               <button className="btn" onClick={handleLogout}>
                 Sair
               </button>
@@ -146,6 +172,9 @@ function LobbyInner() {
 
           {/* Stats Widget */}
         <StatsWidget />
+        
+        {/* Daily Bonus */}
+        <DailyBonus onClaim={fetchWallet} />
 
         <div className="lobby-stats">
             <div className="stat-item">

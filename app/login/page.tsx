@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_URL } from "../../src/lib/api";
-import { setToken, clearToken } from "../../src/lib/auth";
+import { setToken, clearToken, setUserData } from "../../src/lib/auth";
 import { disconnectSocket } from "../../src/lib/socket";
 
 type AuthResponse = { token: string; user: { id: string; username: string } };
@@ -36,6 +36,12 @@ export default function LoginPage() {
       const path = mode === "login" ? "/auth/login" : "/auth/register";
       const data = await post<AuthResponse>(path, { username, password });
       setToken(data.token);
+      
+      // Salvar dados do usuário (incluindo role)
+      if (data.user) {
+        setUserData(data.user);
+      }
+      
       disconnectSocket(); // garante reconexão com token novo
       setInfo(`Logado como ${data.user.username}.`);
       router.push("/lobby");
